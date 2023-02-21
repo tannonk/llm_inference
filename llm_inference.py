@@ -187,7 +187,8 @@ class LLM(object):
             torch_dtype=torch.float16, 
             max_memory=max_memory,
             offload_state_dict=True,
-            offload_folder="/scratch/tkew/offload")
+            offload_folder="/scratch/tkew/offload" # TODO: make this configurable
+            )
         end_time = time.time()
         logger.info(f"Loaded model {model_name} in {end_time - start_time:.4f} seconds")
         
@@ -250,15 +251,15 @@ class LLM(object):
         return self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
 
     @staticmethod
-    def postprocess_model_outputs(inputs: List[str], outputs: List[str], delimiter: str) -> List[str]:
+    def postprocess_model_outputs(inputs: List[str], outputs: List[str], delimiter: str = '***') -> List[str]:
         trimmed_outputs = []
         # breakpoint()
         for i, o in zip(inputs, outputs):
             o = o.replace(i, '').strip() # remove the input substring (prompt) from the output string
             o = o.split(delimiter) # e.g. '\\n\\n' if used as prompt delimiter and to allow cuting off after the first example
             if len(o) == 1:
-                logger.warning(f"Delimiter '{delimiter}' not found in output string")
-            trimmed_outputs.append(o)
+                logger.warning(f"Delimiter '{delimiter}' not found in output {o[:50]}...")
+            trimmed_outputs.append(o[0].strip())
         return trimmed_outputs
 
 

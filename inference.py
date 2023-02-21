@@ -80,7 +80,7 @@ def iter_batches(file: str, batch_size: int = 3):
             current_batch = []    
     yield current_batch # don't forget the last one!
 
-def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '\n\n', seed: int = 42) -> List[str]:
+def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '***', seed: int = 42) -> List[str]:
     """
     prepares few-shot (or zero-shot) inputs for LLM inference
     """
