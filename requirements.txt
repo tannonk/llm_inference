@@ -1,0 +1,6 @@
+accelerate
+# bitsandbytes
+gpustat
+# torch
+# transformers
+sentencepiece

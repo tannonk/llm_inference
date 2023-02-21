@@ -1,0 +1,5 @@
+examples/
+installs/
+__pycache__/
+slurm_scripts/
+*.pyc
