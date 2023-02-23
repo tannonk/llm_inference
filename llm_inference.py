@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import argparse
 import math
@@ -17,6 +18,9 @@ from transformers import (
     HfArgumentParser,
     set_seed,
 )
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512mb"
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -67,7 +71,7 @@ class InferenceArguments:
     )
 
     batch_size: int = field(
-        default=3,
+        default=1,
         metadata={"help": "Batch size for predictions"}
     )
 
@@ -151,10 +155,10 @@ class InferenceArguments:
         metadata={"help": "Prompt for generated text"}
     )
 
-    prompts: List[str] = field(
-        default=None,
-        metadata={"help": "Prompt for generated text"}
-    )
+    # prompts: List[str] = field(
+    #     default=None,
+    #     metadata={"help": "Prompt for generated text"}
+    # )
 
     few_shot_n: int = field(
         default=0,
@@ -175,17 +179,17 @@ class InferenceArguments:
 class LLM(object):
 
     def __init__(self, model_name: str, max_memory: Optional[int] = None):
-        # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388
-        max_memory = self.set_max_memory(max_memory)
-        
+        # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
         # balanced_low_0 is useful for when you need to use GPU 0 for some processing of the outputs, e.g. when using the generate function
+        # breakpoint()
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name, 
-            device_map="balanced_low_0", 
+            # device_map="balanced_low_0", 
+            device_map="auto", 
             load_in_8bit=True, 
             torch_dtype=torch.float16, 
-            max_memory=max_memory,
+            max_memory=self.set_max_memory(max_memory),
             offload_state_dict=True,
             offload_folder="/scratch/tkew/offload" # TODO: make this configurable
             )
@@ -205,23 +209,14 @@ class LLM(object):
             # to optimize the maximum batch size on multiple GPUs, we give the first GPU less memory
             # see max_memory at https://huggingface.co/docs/accelerate/main/en/usage_guides/big_modeling
             max_memory = {
-                i:(f"{math.floor(t*max_memory)}GB" if i > 0 else f"{math.floor(t*max_memory*0.5)}GB") for i in range(n_gpus)
+                i:(f"{math.floor(t*max_memory)}GiB" if i > 0 else f"{math.floor(t*max_memory*0.6)}GiB") for i in range(n_gpus)
                 }
+            max_memory['cpu'] = '400GiB'
             
             logger.info(f"Set maximum memory: {max_memory}")
+            return max_memory
         else:
             return None
-
-
-    # def generate_from_model(self, prompt: str, args):
-    #     encoded_input = self.tokenizer(prompt, return_tensors='pt')
-    #     start_time = time.time()
-    #     model_outputs = self.model.generate(input_ids=encoded_input['input_ids'].cuda(), max_new_tokens=args.max_new_tokens)
-    #     end_time = time.time()
-    #     if args.verbose:
-    #         logger.info(f"Generated {sum(model_outputs.shape) - sum(encoded_input['input_ids'].shape)} tokens in {end_time - start_time:.4f} seconds")
-    #     return self.tokenizer.decode(model_outputs[0], skip_special_tokens=True)
-
 
     def generate_from_model(self, inputs: List[str], args: InferenceArguments) -> List[str]:
         """
@@ -245,15 +240,13 @@ class LLM(object):
 
         if args.verbose:
             logger.info(f"Generated {sum(model_outputs.shape) - sum(encoded_inputs['input_ids'].shape)} tokens in {end_time - start_time:.4f} seconds")
-        
-        # breakpoint()
+
         # self.tokenizer.batch_decode(model_outputs[:, encoded_inputs['input_ids'].size()[1]:], skip_special_tokens=True)
         return self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
 
     @staticmethod
     def postprocess_model_outputs(inputs: List[str], outputs: List[str], delimiter: str = '***') -> List[str]:
         trimmed_outputs = []
-        # breakpoint()
         for i, o in zip(inputs, outputs):
             o = o.replace(i, '').strip() # remove the input substring (prompt) from the output string
             o = o.split(delimiter) # e.g. '\\n\\n' if used as prompt delimiter and to allow cuting off after the first example
@@ -261,53 +254,6 @@ class LLM(object):
                 logger.warning(f"Delimiter '{delimiter}' not found in output {o[:50]}...")
             trimmed_outputs.append(o[0].strip())
         return trimmed_outputs
-
-
-    # def batch_for_generation(self, examples, batch_size: int):
-        
-    #     current_batch = {
-    #         'input_ids': [], 
-    #         'attention_mask': [], 
-    #         'labels': [],
-    #     }
-
-    #     for i, example in enumerate(examples):
-    #         current_batch['input_ids'].append(example['input_ids'])
-    #         current_batch['attention_mask'].append(example['attention_mask'])
-    #         current_batch['labels'].append(example['labels'])
-    #         current_batch['turns'].append(example.get('turns'))
-    #         current_batch['knowledge'].append(example.get('knowledge'))
-    #         current_batch['target'].append(example.get('target'))
-
-    #         # get cross attention biases for each individual example (would be fast to do for a batch if all items are the same)
-    #         # if self.gen_args.use_cross_attention_bias:
-    #         current_batch['cross_attention_bias'].append(self.construct_cross_attention_bias(example['attention_mask']))
-    #         if context_code is not None:
-    #             current_batch['context_code'].append(context_code)
-
-    #         if len(current_batch['input_ids']) == batch_size or i == len(examples) - 1:
-                
-    #             current_batch['input_ids'] = torch.stack(current_batch['input_ids']).to(self.model.device)
-    #             current_batch['attention_mask'] = torch.stack(current_batch['attention_mask']).to(self.model.device)
-    #             # TODO: pad to max length before stacking to return true tensor
-    #             # current_batch['labels'] = torch.stack(current_batch['labels']).to(model.device)
-                
-    #             # stack cross attention biases for each individual example
-    #             current_batch['cross_attention_bias'] = torch.stack(current_batch['cross_attention_bias']).to(self.model.device) if len(current_batch['cross_attention_bias']) else None
-    #             # to make sure dimensions are correct, we need to ensure the attention 
-    #             # bias vector as the same length as the encoder hidden states which differs depending on the context code
-    #             current_batch['cross_attention_bias'] = self.expand_attention_bias_to_context_code(current_batch['cross_attention_bias'], context_code)
-    #             # stack context code for each individual example
-    #             current_batch['context_code'] = torch.stack(current_batch['context_code']) if len(current_batch['context_code']) else None
-
-    #             yield current_batch
-            
-    #             # reset lists for next batch
-    #             current_batch['input_ids'], current_batch['attention_mask'], current_batch['labels'] = [], [], []
-    #             current_batch['turns'], current_batch['knowledge'], current_batch['target'] = [], [], []
-    #             current_batch['cross_attention_bias'] = []
-    #             current_batch['context_code'] = []
-
 
 
 if __name__ == "__main__":

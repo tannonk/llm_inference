@@ -3,3 +3,5 @@ installs/
 __pycache__/
 slurm_scripts/
 *.pyc
+slurm-*
+*.out

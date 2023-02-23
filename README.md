@@ -17,7 +17,7 @@ python inference.py \
     --input_file examples/rrgen.jsonl
 ```
 
-As input, `inference.py` expects a jsonl file containing the following dictionary object on each line:
+The argument `--input_file` should be a JSONL file containing the following dictionary-like object on each line:
 
 ```json
 {

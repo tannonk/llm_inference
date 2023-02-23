@@ -73,12 +73,13 @@ def iter_batches(file: str, batch_size: int = 3):
     for line in iter_json_lines(file):
         current_batch.append(line)
         c += 1
-        if c == batch_size:
+        if c == batch_size and len(current_batch) > 0:
             yield current_batch
             # reset vars for next batch
             c = 0
             current_batch = []    
-    yield current_batch # don't forget the last one!
+    if len(current_batch) > 0:
+        yield current_batch # don't forget the last one!
 
 def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '***', seed: int = 42) -> List[str]:
     """
@@ -117,10 +118,11 @@ if __name__ == '__main__':
     llm = LLM(args.model_name_or_path, args.max_memory)
 
     for batch_prompts in iter_batches(args.input_file, args.batch_size):
-        print(len(batch_prompts))
+        # print(len(batch_prompts))
         # print(batch_prompts)
         inputs = prepare_inputs(batch_prompts, args.few_shot_n, args.delimiter, args.seed)
         outputs = llm.generate_from_model(inputs, args)
     
         outputs = llm.postprocess_model_outputs(inputs, outputs, args.delimiter)
-        print(outputs)
+        for o in outputs:
+            print(o)
