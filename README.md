@@ -14,7 +14,7 @@ python inference.py \
     --max_new_tokens 500 \
     --few_shot_n 3 \
     --delimiter '\\n\\n' \
-    --input_file examples/rrgen.jsonl
+    --input_file data/examples/dummy.jsonl
 ```
 
 The argument `--input_file` should be a JSONL file containing the following dictionary-like object on each line:

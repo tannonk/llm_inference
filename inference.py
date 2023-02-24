@@ -98,8 +98,6 @@ def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '
             inputs.append(input_str)
         else:
             raise NotImplementedError(f'Expected examples to be a list of examples, but got {type(ex["examples"])}')
-                # assert delimiter in ex['examples'], f"Delimiter {delimiter} is not consistent between examples and src"
-                # inputs.append(f"{ex['examples']}{delimiter}{ex['src']}")
     return inputs
 
 
@@ -107,19 +105,10 @@ if __name__ == '__main__':
 
     parser = HfArgumentParser((InferenceArguments))
     args = parser.parse_args_into_dataclasses()[0]
-    
-    # prompts = load_few_shot_prompts(args.input_file)
-    # fsprompts = load_few_shot_prompts(args.fsp_file) if args.fsp_file else None
-    # prompts = merge_prompts(prompts, fsprompts)
-
-    # print(prompts)
-    # facebook/opt-30b
 
     llm = LLM(args.model_name_or_path, args.max_memory, args.seed)
 
     for batch_prompts in iter_batches(args.input_file, args.batch_size):
-        # print(len(batch_prompts))
-        # print(batch_prompts)
         inputs = prepare_inputs(batch_prompts, args.few_shot_n, args.delimiter, args.seed)
         outputs = llm.generate_from_model(inputs, args)
     

@@ -1,4 +1,4 @@
-examples/
+rrgen/
 installs/
 __pycache__/
 slurm_scripts/
