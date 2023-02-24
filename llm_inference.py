@@ -178,11 +178,15 @@ class InferenceArguments:
 
 class LLM(object):
 
-    def __init__(self, model_name: str, max_memory: Optional[int] = None):
+    def __init__(self, model_name: str, max_memory: Optional[int] = None, seed: int = 42):
         # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
         # balanced_low_0 is useful for when you need to use GPU 0 for some processing of the outputs, e.g. when using the generate function
-        # breakpoint()
+        
+        # set seed for reproducibility
+        
+        set_seed(seed)
+
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name, 
             # device_map="balanced_low_0", 
@@ -223,6 +227,7 @@ class LLM(object):
         queries the generation model for a given batch of inputs
         """
         encoded_inputs = self.tokenizer(inputs, return_tensors='pt', padding=True)
+        # encoded_inputs has shape: [num_return_sequences, seq_len]
         start_time = time.time()
         model_outputs = self.model.generate(
             input_ids=encoded_inputs['input_ids'].cuda(), 
@@ -235,24 +240,60 @@ class LLM(object):
             temperature=args.temperature, 
             top_k=args.top_k, 
             top_p=args.top_p,
-            )#.to('cpu')
+            )
         end_time = time.time()
 
-        if args.verbose:
-            logger.info(f"Generated {sum(model_outputs.shape) - sum(encoded_inputs['input_ids'].shape)} tokens in {end_time - start_time:.4f} seconds")
-
-        # self.tokenizer.batch_decode(model_outputs[:, encoded_inputs['input_ids'].size()[1]:], skip_special_tokens=True)
-        return self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
+        # model_outputs has shape: [num_return_sequences, seq_len]
+        new_tokens = (model_outputs.shape[1] - encoded_inputs['input_ids'].shape[1]) * model_outputs.shape[0]
+        cur_batch_size = encoded_inputs['input_ids'].shape[0] # use the actual batch size instead of args.batch_size as these can differ
+        logger.info(f"Generated {(new_tokens) * cur_batch_size} " \
+                    f"new tokens in {end_time - start_time:.4f} seconds. " \
+                    f"Batch size: {cur_batch_size}")
+        
+        model_outputs = self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
+        
+        return self.reshape_model_outputs(model_outputs, cur_batch_size)
 
     @staticmethod
-    def postprocess_model_outputs(inputs: List[str], outputs: List[str], delimiter: str = '***') -> List[str]:
-        trimmed_outputs = []
-        for i, o in zip(inputs, outputs):
-            o = o.replace(i, '').strip() # remove the input substring (prompt) from the output string
-            o = o.split(delimiter) # e.g. '\\n\\n' if used as prompt delimiter and to allow cuting off after the first example
-            if len(o) == 1:
-                logger.warning(f"Delimiter '{delimiter}' not found in output {o[:50]}...")
-            trimmed_outputs.append(o[0].strip())
+    def reshape_model_outputs(outputs: List[str], input_batch_size: int) -> List[List[str]]:
+        """
+        Reshapes a 1D list of output sequences with size [num_return_sequences]
+        to a 2D list of output sequences with size [batch_size, num_return_sequences]
+        """
+        
+        num_return_sequences = len(outputs)
+        return_seqs_per_input = int(num_return_sequences/input_batch_size)
+
+        if return_seqs_per_input > 1:
+            logger.info(f"Number of return sequences ({num_return_sequences}) > batch size ({input_batch_size})")
+
+        # pack outputs into a list of lists, i.e. batch_size x num_return_seqs
+        outputs = [outputs[i:i+return_seqs_per_input]for i in range(0, num_return_sequences, return_seqs_per_input)]
+        
+        assert len(outputs) == input_batch_size
+        assert len(outputs[0]) == return_seqs_per_input
+
+        return outputs
+
+    @staticmethod
+    def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], delimiter: str = '***') -> List[str]:
+        """
+        Applies post-processing to model output sequences:
+            - removes the input sequence
+            - trims each output sequence according to the context delimiter provided (i.e. takes only the first one)
+        """
+        trimmed_outputs = [[] for _ in range(len(outputs))]
+        for i in range(len(trimmed_outputs)):
+            for out_seq in outputs[i]:
+                out_seq = out_seq.replace(inputs[i], '').strip() # remove the input substring (prompt) from the output string
+                out_seq = out_seq.split(delimiter) # e.g. '\\n\\n' if used as prompt delimiter and to allow cuting off after the first example
+                if len(out_seq) == 1:
+                    logger.warning(
+                        f"Potentially unfinished sequence " \
+                        f"(Delimiter '{delimiter}' not found in output: {out_seq[0][:50]} ... {out_seq[0][-50:]}) " \
+                        f"You may need to increase `--max_new_tokens` for this task."
+                        )
+                trimmed_outputs[i].append(out_seq[0].strip())
         return trimmed_outputs
 
 

@@ -93,7 +93,7 @@ def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '
         if few_shot_n == 0:
             inputs.append(ex['src'])
         elif isinstance(ex['examples'], list):
-            assert few_shot_n < len(ex['examples']), f"few_shot_n ({few_shot_n}) can not be greater than the number of available examples ({len(ex['examples'])})"
+            assert few_shot_n <= len(ex['examples']), f"few_shot_n ({few_shot_n}) can not be greater than the number of available examples ({len(ex['examples'])})"
             input_str = delimiter.join(random.sample(ex['examples'], few_shot_n)) + delimiter + ex['src']
             inputs.append(input_str)
         else:
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     # print(prompts)
     # facebook/opt-30b
 
-    llm = LLM(args.model_name_or_path, args.max_memory)
+    llm = LLM(args.model_name_or_path, args.max_memory, args.seed)
 
     for batch_prompts in iter_batches(args.input_file, args.batch_size):
         # print(len(batch_prompts))
