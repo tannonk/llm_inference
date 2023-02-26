@@ -5,3 +5,6 @@ slurm_scripts/
 *.pyc
 slurm-*
 *.out
+
+# datasets
+data/asset/

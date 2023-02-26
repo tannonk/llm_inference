@@ -1,6 +1,8 @@
-accelerate
+accelerate==0.16.0
 # bitsandbytes
 gpustat
-# torch
+langchain==0.0.94
+nltk==3.8.1
+torch==1.13.1
 # transformers
-sentencepiece
+sentencepiece==0.1.97
