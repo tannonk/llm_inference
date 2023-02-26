@@ -58,7 +58,7 @@ The argument `--input_file` should be a JSONL file containing the following dict
         [
             "few-shot prompt 1", 
             "few-shot prompt 2", 
-            "few-shot prompt 3", 
+            "few-shot prompt 3",
             "etc."
         ], 
     "src": "src text / prompt for continuation"
@@ -67,8 +67,22 @@ The argument `--input_file` should be a JSONL file containing the following dict
 
 ## Data
 
-To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_data.sh`
+To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_data.sh`. 
+This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
+
+```bash
+bash scripts/fetch_data.sh
+```
+
+Once you have downloaded the raw datasets, we can prepare them for inference using the relevant `prepare_*.py` script.
+For example, to prepare ASSET, run
+
+```bash
+python -m scripts.prepare_asset
+```
+
 
 ## TODOs
 
-- [] task-specific prompts
+- [ ] task-specific prompts
+- [ ] datasets and data prep
