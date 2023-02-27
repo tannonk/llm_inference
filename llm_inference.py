@@ -150,11 +150,15 @@ class InferenceArguments:
         metadata={"help": "Print debug information"}
     )
 
-    prompt: str = field(
+    prompt_prefix: str = field(
         default=None,
-        metadata={"help": "Prompt for generated text"}
+        metadata={"help": "Prefix for generation prompt. This is passed to LangChain."}
     )
 
+    n_refs: int = field(
+        default = 1,
+        metadata={"help": "Number of target reference examples to show for each few-shot demonstration."}
+    )
     # prompts: List[str] = field(
     #     default=None,
     #     metadata={"help": "Prompt for generated text"}
@@ -165,14 +169,25 @@ class InferenceArguments:
         metadata={"help": "number of examples to use as few-shot in-context examples"}
     )
 
-    delimiter: str = field(
+    example_separator: str = field(
         default="\n\n",
         metadata={"help": "Delimiter for prompts and generated text"}
+    )
+
+    ref_delimiter: str = field(
+        default="\t",
+        metadata={"help": "Delimiter for multiple example references in prompt"}
     )
 
     max_memory: float = field(
         default=1.0,
         metadata={"help": "Prompt for generated text"}
+    )
+
+
+    examples: str = field(
+        default=None,
+        metadata={"help": "file containing examples for few-shot prompting, e.g. a validation/training dataset"}
     )
 
 
@@ -205,8 +220,8 @@ class LLM(object):
 
     @staticmethod
     def set_max_memory(max_memory: Optional[float] = None):
-        if max_memory and max_memory != 1.0:
-            n_gpus = torch.cuda.device_count()
+        n_gpus = torch.cuda.device_count()
+        if max_memory and max_memory != 1.0 and n_gpus > 1:
             logger.info(f"Infering max memory...")
             t = torch.cuda.get_device_properties(0).total_memory / (1024*1024*1024)
             # note, we user math.floor() as a consertative rounding method
@@ -276,7 +291,7 @@ class LLM(object):
         return outputs
 
     @staticmethod
-    def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], delimiter: str = '***') -> List[str]:
+    def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = '***', ref_delimiter: str = None) -> List[str]:
         """
         Applies post-processing to model output sequences:
             - removes the input sequence
@@ -286,11 +301,11 @@ class LLM(object):
         for i in range(len(trimmed_outputs)):
             for out_seq in outputs[i]:
                 out_seq = out_seq.replace(inputs[i], '').strip() # remove the input substring (prompt) from the output string
-                out_seq = out_seq.split(delimiter) # e.g. '\\n\\n' if used as prompt delimiter and to allow cuting off after the first example
+                out_seq = out_seq.split(example_separator) # e.g. '\\n\\n' if used as example_separator in prompt and to allow cuting off after the first example
                 if len(out_seq) == 1:
                     logger.warning(
                         f"Potentially unfinished sequence " \
-                        f"(Delimiter '{delimiter}' not found in output: {out_seq[0][:50]} ... {out_seq[0][-50:]}) " \
+                        f"(Delimiter '{example_separator}' not found in output: {out_seq[0][:50]} ... {out_seq[0][-50:]}) " \
                         f"You may need to increase `--max_new_tokens` for this task."
                         )
                 trimmed_outputs[i].append(out_seq[0].strip())

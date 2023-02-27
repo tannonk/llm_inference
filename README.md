@@ -39,15 +39,20 @@ python -m bitsandbytes
 
 ## Examples
 
-To run inference with LLMs available on HuggingFace, run
+To run inference with LLMs available on HuggingFace, run `inference.py` passing the relevant arguments, e.g.:
 
 ```bash
 python inference.py \
-    --model_name_or_path "bigscience/bloom-560m" \
-    --max_new_tokens 200 \
-    --few_shot_n 3 \
-    --delimiter '\\n\\n' \
-    --input_file data/examples/dummy.jsonl
+	--model_name_or_path "bigscience/bloom-560m" \
+	--max_new_tokens 100 \
+	--max_memory 0.65 \
+	--batch_size 2 --num_beams 4 --num_return_sequences 3 \
+	--examples "data/asset/dataset/valid.jsonl" \
+	--input_file "data/asset/dataset/asset.test.orig.dummy" \
+	--n_refs 2 \
+	--few_shot_n 3 \
+	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
+	--example_separator "\n\n"
 ```
 
 The argument `--input_file` should be a JSONL file containing the following dictionary-like object on each line:

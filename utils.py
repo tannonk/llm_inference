@@ -46,8 +46,8 @@ def merge_prompts(prompts: List[str], fsprompts: Optional[List[str]] = None) -> 
         assert len(fsprompts) == len(prompts)
         return [fsprompts[i] + prompts[i] for i in range(len(prompts))]
 
-def iter_batches(file: str, batch_size: int = 3):
-    """Fetch batched lines from file"""
+def iter_json_batches(file: str, batch_size: int = 3):
+    """Fetch batched lines from jsonl file"""
     current_batch = []
     c = 0
     for line in iter_json_lines(file):
@@ -60,6 +60,22 @@ def iter_batches(file: str, batch_size: int = 3):
             current_batch = []    
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
+
+def iter_batches(file: str, batch_size: int = 3):
+    """Fetch batched lines from file"""
+    current_batch = []
+    c = 0
+    for line in iter_lines(file):
+        current_batch.append(line)
+        c += 1
+        if c == batch_size and len(current_batch) > 0:
+            yield current_batch
+            # reset vars for next batch
+            c = 0
+            current_batch = []    
+    if len(current_batch) > 0:
+        yield current_batch # don't forget the last one!
+
 
 if __name__ == "__main__":
     pass
