@@ -43,16 +43,20 @@ To run inference with LLMs available on HuggingFace, run `inference.py` passing 
 
 ```bash
 python inference.py \
-	--model_name_or_path "bigscience/bloom-560m" \
+	--model_name_or_path "bigscience/bloom-1b1" \
 	--max_new_tokens 100 \
 	--max_memory 0.65 \
-	--batch_size 2 --num_beams 4 --num_return_sequences 3 \
-	--examples "data/asset/dataset/valid.jsonl" \
+	--batch_size 8 \
+	--num_beams 1 \
+	--num_return_sequences 1 \
+	--do_sample True \
+	--top_p 0.9 \
 	--input_file "data/asset/dataset/asset.test.orig" \
-	--n_refs 2 \
+	--examples "data/asset/dataset/valid.jsonl" \
+	--n_refs 1 \
 	--few_shot_n 3 \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-	--example_separator "\n\n"
+	--output_file  "data/outputs/bloom-1b1/asset.test"
 ```
 
 The argument `--input_file` should be a JSONL file containing the following dictionary-like object on each line:
