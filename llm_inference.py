@@ -224,10 +224,10 @@ class LLM(object):
             offload_folder=self.args.offload_folder,
             )
         end_time = time.time()
-        logger.info(f"Loaded model {args.model_name_or_path} in {end_time - start_time:.4f} seconds")
+        logger.info(f"Loaded model {self.args.model_name_or_path} in {end_time - start_time:.4f} seconds")
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
         
-        self.tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path)
 
     def set_max_memory(self):
         n_gpus = torch.cuda.device_count()

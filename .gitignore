@@ -8,3 +8,5 @@ slurm-*
 
 # datasets
 data/asset/
+data/outputs/
+prompts/
