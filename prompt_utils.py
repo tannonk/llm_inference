@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import re
 import random
+import logging
 from typing import List, Dict, Iterable, Optional
 
 from langchain import PromptTemplate, FewShotPromptTemplate
@@ -12,16 +14,25 @@ from langchain.prompts.example_selector.ngram_overlap import NGramOverlapExample
 
 from utils import iter_json_lines
 
+logger = logging.getLogger(__name__)
+
+simple_prompt = PromptTemplate(
+    input_variables=["complex", "simple"],
+    template="Complex: {complex}\nSimple: {simple}",
+)
 
 class RandomExampleSelector(BaseExampleSelector):
     
-    def __init__(self, examples: List[Dict[str, str]], few_shot_n: int = 1, n_refs: int = 1, seed: int = 42):
+    def __init__(
+        self, 
+        examples: List[Dict[str, str]], 
+        few_shot_n: int = 1, 
+        n_refs: int = 1, 
+        ):
         self.examples = examples
         self.few_shot_n = few_shot_n
         self.n_refs = n_refs
         
-        random.seed(seed) # set seed for reproducibility
-
     def add_example(self, example: Dict[str, str]) -> None:
         """Add new example to store for a key."""
         self.examples.append(example)
@@ -64,6 +75,39 @@ class RandomExampleSelector(BaseExampleSelector):
             flat_examples.append(flat_ex) 
         return flat_examples
 
+
+def prepare_prompted_inputs(
+    inputs: List[str],
+    examples: Optional[List[Dict]] = None, 
+    example_selector: Optional[BaseExampleSelector] = None,
+    prefix: str = "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+    suffix: str = "Complex: {input}\nSimple:",
+    few_shot_n: int = 0, 
+    n_refs: int = 1,
+    example_separator: str = "\n\n",
+    ref_delimiter: str = "\t",
+    ):
+
+    if examples is None and example_selector is None:
+        raise RuntimeError(f"Expected either `examples` or a valid `example_selector` but got None")
+
+    prompted_inputs = []
+
+    for i in inputs:
+        
+        few_shot_prompt = FewShotPromptTemplate(
+            examples=None if example_selector is None else examples,
+            example_selector=example_selector, # use an ExampleSelector instead of examples.
+            example_prompt=simple_prompt, # examples format
+            prefix=prefix,
+            suffix=suffix,
+            input_variables=["input"], # the variables that the overall prompt expects
+            example_separator=example_separator, # string used to join the prefix, examples, and suffix together
+        )
+
+        prompted_inputs.append(few_shot_prompt.format(input=i))
+
+    return prompted_inputs
 
 # def flatten_references(examples: Iterable, src_key: str = "complex", tgt_key: str = "simple", n_refs: int = 1) -> List[Dict]:
 #     """
@@ -110,45 +154,7 @@ class RandomExampleSelector(BaseExampleSelector):
 #         else:
 #             flat_examples[i]["simple"] = examples[i].pop(tgt_key)
 #     return flat_examples
-    
-simple_prompt = PromptTemplate(
-    input_variables=["complex", "simple"],
-    template="Complex: {complex}\nSimple: {simple}",
-)
-    
-def prepare_prompted_inputs(
-    inputs: List[str],
-    examples: List[Dict], 
-    prefix: str = "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
-    suffix: str = "Complex: {input}\nSimple:",
-    few_shot_n: int = 0, 
-    n_refs: int = 1,
-    example_separator: str = "\n\n",
-    ref_delimiter: str = "\t",
-    seed: int = 42,
-    ):
 
-    prompted_inputs = []
-    for i in inputs:
-        example_selector = RandomExampleSelector(
-            examples=examples, # the examples it has available to choose from.
-            few_shot_n=few_shot_n,
-            n_refs=n_refs,
-            seed=seed,
-        )
-
-        few_shot_prompt = FewShotPromptTemplate(
-            example_selector=example_selector, # use an ExampleSelector instead of examples.
-            example_prompt=simple_prompt, # examples format
-            prefix=prefix,
-            suffix=suffix,
-            input_variables=["input"], # the variables that the overall prompt expects
-            example_separator=example_separator, # string used to join the prefix, examples, and suffix together
-        )
-
-        prompted_inputs.append(few_shot_prompt.format(input=i))
-
-    return prompted_inputs
 
 # redundant
 # def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '***', seed: int = 42) -> List[str]:
@@ -167,7 +173,54 @@ def prepare_prompted_inputs(
 #         else:
 #             raise NotImplementedError(f'Expected examples to be a list of examples, but got {type(ex["examples"])}')
 #     return inputs
+
+def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = '***', ref_delimiter: str = None) -> List[List[str]]:
+    """
+    Applies task-specific post-processing to model output sequences:
+        - removes the input sequence
+        - trims each output sequence according to the context delimiter provided (i.e. takes only the first one)
     
+    Args:
+        inputs :: List of prompted input (used to clean up output sequences)
+        outputs :: 2D list with shape [inputs, num_return_sequences]
+        example_separator :: character delimiter used to seperated few-shot examples
+        ref_delimiter :: character delimiter used to seperate multiple reference examples if available (ignored for now)
+    """
+    
+    # initialise a list of lists for outputs in case num_return_sequences > 1
+    trimmed_outputs = [[] for _ in range(len(outputs))]
+    
+    for i in range(len(trimmed_outputs)):
+        for out_seq in outputs[i]:
+            # out_seq contains the full prompt + generated output
+            
+            # step 1. strip away the input prompt
+            out_seq = out_seq.replace(inputs[i], '').strip() # remove the input substring (prompt) from the output string
+
+            # step 2. split output string by the example seperator character and take only the first part
+            split_out_seq = out_seq.split(example_separator) # e.g. '\\n\\n' if used as example_separator in prompt and to allow cuting off after the first example
+            # split_out_seq = re.split(example_separator, out_seq, 1)
+
+            if len(split_out_seq) == 1:
+                logger.warning(
+                    f"Potentially unfinished sequence " \
+                    f"(Delimiter '{example_separator}' not found in output sequence) " \
+                    f"You may need to increase `--max_new_tokens` for this task."
+                    )                
+
+            # step 3. remove extraneous newlines chars
+            out_seq = re.sub('\n', ' ', split_out_seq[0])
+
+            # step 4. if multiple references are provided for each prompt example, the model may replicate this pattern
+            # currently assumes multiple references are simply enumerated, e.g. 0: ... 1: ...
+            out_seq = [x.strip() for x in re.split(r'\d:', out_seq) if x.strip()][0]
+
+            # step 5. remove extraenous task-specific delims            
+            out_seq = re.sub(r'\s+Simple:\s+', '', out_seq)
+            out_seq = re.sub(r'\s+Complex:\s+', '', out_seq)
+
+            trimmed_outputs[i].append(out_seq.strip())
+    return trimmed_outputs  
 
 if __name__ == "__main__":
 
@@ -175,12 +228,12 @@ if __name__ == "__main__":
 
     dataset = "data/asset/dataset/valid.jsonl"
     n_refs = 2
-    seed = 3
+    # seed = 3
 
     print(prepare_prompted_inputs(
         inputs = ["It is particularly famous for the cultivation of kiwifruit."],
         examples = list(iter_json_lines(dataset)),
         few_shot_n = 3,
         n_refs = n_refs,
-        seed=10902
+        # seed=seed
     ))

@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+
+Generic functions for file handling
+
+"""
+
 import json
 import logging
 import logging
@@ -76,6 +85,9 @@ def iter_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
+def serialize_to_jsonl(inputs: List[str], outputs: List[str]):
+    for input_sequence, output_sequences in zip(inputs, outputs):
+        yield {"input_prompt": input_sequence, "model_output": '\t'.join(output_sequences).strip()}
 
 if __name__ == "__main__":
     pass

@@ -16,7 +16,6 @@ from transformers import (
     AutoModelForCausalLM, 
     AutoTokenizer,
     HfArgumentParser,
-    set_seed,
 )
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512mb"
@@ -36,6 +35,10 @@ class InferenceArguments:
     Arguments pertaining to running generation/inference with pre-trained/fine-tuned model.
     """
 
+    ################ 
+    ## model loading
+    ################
+
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )    
@@ -45,20 +48,34 @@ class InferenceArguments:
     #     metadata={"help": "Path to fine-tuned model checkpoint"}
     # )
     
-    output_dir: str = field(
-        default=None,
-        metadata={"help": "Path to output directory"}
+    load_in_8bit: bool = field(
+        default=True,
+        metadata={"help": "If set to True, model will be loaded with int8 quantization (see https://huggingface.co/blog/hf-bitsandbytes-integration)"}
     )
 
-    output_file: str = field(
-        default=None,
-        metadata={"help": "Output file for model generations"}
+    offload_state_dict: bool = field(
+        default=True,
+        metadata={"help": "Whether to offload state dict (useful for very large LMs)"}
     )
 
-    input_file: str = field(
+    offload_folder: str = field(
         default=None,
-        metadata={"help": "Input file containing prompt generations"}
+        metadata={"help": "directory path for offloading"}
     )
+
+    device_map: str = field(
+        default="auto",
+        metadata={"help": ""}
+    )
+
+    max_memory: float = field(
+        default=1.0,
+        metadata={"help": "Prompt for generated text"}
+    )
+
+    ###################
+    ## inference params
+    ###################
 
     seed: int = field(
         default=42,
@@ -80,11 +97,7 @@ class InferenceArguments:
         metadata={"help": "Minimum length of generated text"}
     )
 
-    max_length: int = field(
-        default=64,
-        metadata={"help": "Maximum length of generated text"}
-    )
-
+    
     max_new_tokens: int = field(
         default=100,
         metadata={"help": "Maximum number of tokens to generate"}
@@ -130,39 +143,39 @@ class InferenceArguments:
         metadata={"help": "Probability of top-p sampling"}
     )
 
-    # write_to_file: str = field(
-    #     default='auto',
-    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on generation parameters"}
-    # )
-
     verbose: bool = field(
         default=False,
         metadata={"help": "Print progress"}
     )
 
-    data_seed: int = field(
-        default=42,
-        metadata={"help": "random seed for data loading"}
+    ###################
+    ## data and prompts
+    ###################
+
+    input_file: str = field(
+        default=None,
+        metadata={"help": "Input file containing prompt generations"}
     )
 
-    debug: bool = field(
-        default=False,
-        metadata={"help": "Print debug information"}
+    output_dir: str = field(
+        default=None,
+        metadata={"help": "Path to output directory"}
     )
+
+    output_file: str = field(
+        default=None,
+        metadata={"help": "Output file for model generations"}
+    )
+
+    # write_to_file: str = field(
+    #     default='auto',
+    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on generation parameters"}
+    # )
 
     prompt_prefix: str = field(
         default=None,
         metadata={"help": "Prefix for generation prompt. This is passed to LangChain."}
     )
-
-    n_refs: int = field(
-        default = 1,
-        metadata={"help": "Number of target reference examples to show for each few-shot demonstration."}
-    )
-    # prompts: List[str] = field(
-    #     default=None,
-    #     metadata={"help": "Prompt for generated text"}
-    # )
 
     few_shot_n: int = field(
         default=0,
@@ -174,16 +187,15 @@ class InferenceArguments:
         metadata={"help": "Delimiter for prompts and generated text"}
     )
 
+    n_refs: int = field(
+        default = 1,
+        metadata={"help": "Number of target reference examples to show for each few-shot demonstration."}
+    )
+
     ref_delimiter: str = field(
         default="\t",
         metadata={"help": "Delimiter for multiple example references in prompt"}
     )
-
-    max_memory: float = field(
-        default=1.0,
-        metadata={"help": "Prompt for generated text"}
-    )
-
 
     examples: str = field(
         default=None,
@@ -193,35 +205,33 @@ class InferenceArguments:
 
 class LLM(object):
 
-    def __init__(self, model_name: str, max_memory: Optional[int] = None, seed: int = 42):
+    def __init__(self, args: InferenceArguments):
         # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
-        # balanced_low_0 is useful for when you need to use GPU 0 for some processing of the outputs, e.g. when using the generate function
         
         # set seed for reproducibility
-        
-        set_seed(seed)
+        self.args = args
+
+        # set_seed(self.args.seed)
 
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_name, 
-            # device_map="balanced_low_0", 
-            device_map="auto", 
-            load_in_8bit=True, 
+            self.args.model_name_or_path, 
+            device_map=self.args.device_map, # "auto", 
+            load_in_8bit=self.args.load_in_8bit, 
             torch_dtype=torch.float16, 
-            max_memory=self.set_max_memory(max_memory),
-            offload_state_dict=True,
-            offload_folder="/scratch/tkew/offload" # TODO: make this configurable
+            max_memory=self.set_max_memory(),
+            offload_state_dict=self.args.offload_state_dict,
+            offload_folder=self.args.offload_folder,
             )
         end_time = time.time()
-        logger.info(f"Loaded model {model_name} in {end_time - start_time:.4f} seconds")
-        
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        logger.info(f"Loaded model {args.model_name_or_path} in {end_time - start_time:.4f} seconds")
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
 
-    @staticmethod
-    def set_max_memory(max_memory: Optional[float] = None):
+    def set_max_memory(self):
         n_gpus = torch.cuda.device_count()
-        if max_memory and max_memory != 1.0 and n_gpus > 1:
+        if self.args.max_memory and self.args.max_memory != 1.0 and n_gpus > 1:
             logger.info(f"Infering max memory...")
             t = torch.cuda.get_device_properties(0).total_memory / (1024*1024*1024)
             # note, we user math.floor() as a consertative rounding method
@@ -237,24 +247,24 @@ class LLM(object):
         else:
             return None
 
-    def generate_from_model(self, inputs: List[str], args: InferenceArguments) -> List[str]:
+    def generate_from_model(self, inputs: List[str]) -> List[str]:
         """
         queries the generation model for a given batch of inputs
         """
         encoded_inputs = self.tokenizer(inputs, return_tensors='pt', padding=True)
-        # encoded_inputs has shape: [num_return_sequences, seq_len]
+        # encoded_inputs has shape: [batch_size, seq_len]
         start_time = time.time()
         model_outputs = self.model.generate(
             input_ids=encoded_inputs['input_ids'].cuda(), 
-            max_new_tokens=args.max_new_tokens, 
-            min_length=args.min_length,
-            num_beams=args.num_beams,
-            num_return_sequences=args.num_return_sequences, 
-            early_stopping=not args.no_early_stop,
-            do_sample=args.do_sample, 
-            temperature=args.temperature, 
-            top_k=args.top_k, 
-            top_p=args.top_p,
+            max_new_tokens=self.args.max_new_tokens, 
+            min_length=self.args.min_length,
+            num_beams=self.args.num_beams,
+            num_return_sequences=self.args.num_return_sequences, 
+            early_stopping=not self.args.no_early_stop,
+            do_sample=self.args.do_sample, 
+            temperature=self.args.temperature, 
+            top_k=self.args.top_k, 
+            top_p=self.args.top_p,
             )
         end_time = time.time()
 
@@ -262,8 +272,8 @@ class LLM(object):
         new_tokens = (model_outputs.shape[1] - encoded_inputs['input_ids'].shape[1]) * model_outputs.shape[0]
         cur_batch_size = encoded_inputs['input_ids'].shape[0] # use the actual batch size instead of args.batch_size as these can differ
         logger.info(f"Generated {(new_tokens) * cur_batch_size} " \
-                    f"new tokens in {end_time - start_time:.4f} seconds. " \
-                    f"Batch size: {cur_batch_size}")
+                    f"new tokens in {end_time - start_time:.4f} seconds " \
+                    f"(current batch size: {cur_batch_size}).")
         
         model_outputs = self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
         
@@ -277,7 +287,7 @@ class LLM(object):
         """
         
         num_return_sequences = len(outputs)
-        return_seqs_per_input = int(num_return_sequences/input_batch_size)
+        return_seqs_per_input = num_return_sequences//input_batch_size
 
         if return_seqs_per_input > 1:
             logger.info(f"Number of return sequences ({num_return_sequences}) > batch size ({input_batch_size})")
@@ -290,34 +300,12 @@ class LLM(object):
 
         return outputs
 
-    @staticmethod
-    def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = '***', ref_delimiter: str = None) -> List[str]:
-        """
-        Applies post-processing to model output sequences:
-            - removes the input sequence
-            - trims each output sequence according to the context delimiter provided (i.e. takes only the first one)
-        """
-        trimmed_outputs = [[] for _ in range(len(outputs))]
-        for i in range(len(trimmed_outputs)):
-            for out_seq in outputs[i]:
-                out_seq = out_seq.replace(inputs[i], '').strip() # remove the input substring (prompt) from the output string
-                out_seq = out_seq.split(example_separator) # e.g. '\\n\\n' if used as example_separator in prompt and to allow cuting off after the first example
-                if len(out_seq) == 1:
-                    logger.warning(
-                        f"Potentially unfinished sequence " \
-                        f"(Delimiter '{example_separator}' not found in output: {out_seq[0][:50]} ... {out_seq[0][-50:]}) " \
-                        f"You may need to increase `--max_new_tokens` for this task."
-                        )
-                trimmed_outputs[i].append(out_seq[0].strip())
-        return trimmed_outputs
-
 
 if __name__ == "__main__":
     
     hf_parser = HfArgumentParser((InferenceArguments))
     args = hf_parser.parse_args_into_dataclasses()[0]
 
-    llm = LLM(args.model_name_or_path, args.max_memory)
+    llm = LLM(args)
 
-    # print(llm.generate_from_model(args.prompt, max_new_tokens=args.max_new_tokens, verbose=args.verbose))
-    print(llm.generate_from_model([args.prompt], args))
+    print(llm.generate_from_model(["This is an awesome prompt :)"]))

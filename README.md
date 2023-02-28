@@ -48,7 +48,7 @@ python inference.py \
 	--max_memory 0.65 \
 	--batch_size 2 --num_beams 4 --num_return_sequences 3 \
 	--examples "data/asset/dataset/valid.jsonl" \
-	--input_file "data/asset/dataset/asset.test.orig.dummy" \
+	--input_file "data/asset/dataset/asset.test.orig" \
 	--n_refs 2 \
 	--few_shot_n 3 \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
@@ -86,8 +86,23 @@ For example, to prepare ASSET, run
 python -m scripts.prepare_asset
 ```
 
+## Observations
+
+Below are some observations from running inference with LLMs:
+
+1. Beam search uses significantly more GPU memory compared to sampling-based decoding methods with `num_beams=1`
+2. Inference with `bigscience/bloom-560m` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~6GB GPU memory
+3. Inference with `bigscience/bloom-1b1` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~8GB GPU memory
+4. The model footprint for `bigscience/bloom-560m` with `load_in_8bit=True` is ~0.78GB
+5. The model footprint for `bigscience/bloom-1b1` with `load_in_8bit=True` is ~1.35GB
+
+
+## Limitations
+
+LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. 
+The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
 
 ## TODOs
 
-- [ ] task-specific prompts
+- [x] task-specific prompts
 - [ ] datasets and data prep
