@@ -183,7 +183,7 @@ class InferenceArguments:
     )
 
     example_separator: str = field(
-        default="\n\n",
+        default=r"\n\n",
         metadata={"help": "Delimiter for prompts and generated text"}
     )
 
@@ -193,7 +193,7 @@ class InferenceArguments:
     )
 
     ref_delimiter: str = field(
-        default="\t",
+        default=r"\t",
         metadata={"help": "Delimiter for multiple example references in prompt"}
     )
 

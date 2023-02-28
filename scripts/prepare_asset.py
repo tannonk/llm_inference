@@ -20,6 +20,9 @@ with the following structure:
     ]
 }
 
+Example call:
+
+    python -m scripts.prepare_asset
 
 """
 
@@ -47,6 +50,6 @@ for split in ["test", "valid"]:
     c = 0
     with open(outfile, "w", encoding="utf8") as outf:
         for item in dataset:
-            outf.write(f"{json.dumps(item)}\n")
+            outf.write(f"{json.dumps(item, ensure_ascii=False)}\n")
             c += 1
     print(f"Wrote {c} items to {outfile}")

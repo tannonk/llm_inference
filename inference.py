@@ -30,10 +30,12 @@ if __name__ == '__main__':
     # Use stdout when output_file is None
     if args.output_file is None and args.output_dir is None:
         output_file = "stdout"
-    else:
+    elif args.output_file is not None:
         output_file = Path(args.output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        raise NotImplementedError(f"TODO: handle output_dir only")
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # prepare few-shot examples
     examples = list(iter_json_lines(args.examples))
@@ -43,9 +45,8 @@ if __name__ == '__main__':
             n_refs=args.n_refs,
         )
 
-    start_time = time.time()
     with open(output_file, "w", encoding="utf8") if output_file != "stdout" else sys.stdout as outf:
-
+        start_time = time.time()
         c = 0 # counter for generated output sequences
 
         for input_batch in tqdm(iter_batches(args.input_file, args.batch_size)):
@@ -53,7 +54,7 @@ if __name__ == '__main__':
                 inputs=input_batch,
                 example_selector=example_selector,
                 prefix=args.prompt_prefix,
-                suffix="Complex: {input}\nSimple:",
+                suffix=r"Complex: {input}\nSimple:",
                 few_shot_n=args.few_shot_n,
                 n_refs=args.n_refs,
                 example_separator=args.example_separator,
@@ -67,6 +68,6 @@ if __name__ == '__main__':
                 outf.write(f"{line}\n")
                 c += 1
 
-    end_time = time.time()
-    logger.info(f"Finised inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
-    logger.info(f"Wrote {c} outputs to {output_file}")        
+        end_time = time.time()
+        logger.info(f"Finised inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
+        logger.info(f"Wrote {c} outputs to {output_file}")

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 simple_prompt = PromptTemplate(
     input_variables=["complex", "simple"],
-    template="Complex: {complex}\nSimple: {simple}",
+    template=r"Complex: {complex}\nSimple: {simple}",
 )
 
 class RandomExampleSelector(BaseExampleSelector):
@@ -84,8 +84,8 @@ def prepare_prompted_inputs(
     suffix: str = "Complex: {input}\nSimple:",
     few_shot_n: int = 0, 
     n_refs: int = 1,
-    example_separator: str = "\n\n",
-    ref_delimiter: str = "\t",
+    example_separator: str = r"\n\n",
+    ref_delimiter: str = r"\t",
     ):
 
     if examples is None and example_selector is None:
@@ -174,7 +174,7 @@ def prepare_prompted_inputs(
 #             raise NotImplementedError(f'Expected examples to be a list of examples, but got {type(ex["examples"])}')
 #     return inputs
 
-def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = '***', ref_delimiter: str = None) -> List[List[str]]:
+def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = r'\n\n', ref_delimiter: str = r'\t') -> List[List[str]]:
     """
     Applies task-specific post-processing to model output sequences:
         - removes the input sequence
@@ -198,7 +198,7 @@ def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], examp
             out_seq = out_seq.replace(inputs[i], '').strip() # remove the input substring (prompt) from the output string
 
             # step 2. split output string by the example seperator character and take only the first part
-            split_out_seq = out_seq.split(example_separator) # e.g. '\\n\\n' if used as example_separator in prompt and to allow cuting off after the first example
+            split_out_seq = out_seq.split(example_separator) # e.g. '\n\n' if used as example_separator in prompt and to allow cuting off after the first example
             # split_out_seq = re.split(example_separator, out_seq, 1)
 
             if len(split_out_seq) == 1:
@@ -209,7 +209,7 @@ def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], examp
                     )                
 
             # step 3. remove extraneous newlines chars
-            out_seq = re.sub('\n', ' ', split_out_seq[0])
+            out_seq = re.sub(r'\n', ' ', split_out_seq[0])
 
             # step 4. if multiple references are provided for each prompt example, the model may replicate this pattern
             # currently assumes multiple references are simply enumerated, e.g. 0: ... 1: ...

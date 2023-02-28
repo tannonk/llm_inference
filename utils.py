@@ -87,7 +87,7 @@ def iter_batches(file: str, batch_size: int = 3):
 
 def serialize_to_jsonl(inputs: List[str], outputs: List[str]):
     for input_sequence, output_sequences in zip(inputs, outputs):
-        yield {"input_prompt": input_sequence, "model_output": '\t'.join(output_sequences).strip()}
+        yield json.dumps({"input_prompt": input_sequence, "model_output": r'\t'.join(output_sequences).strip()}, ensure_ascii=False)
 
 if __name__ == "__main__":
     pass
