@@ -17,10 +17,7 @@ from llm_inference import InferenceArguments, LLM
 
 logger = logging.getLogger(__name__)
 
-if __name__ == '__main__':
-
-    parser = HfArgumentParser((InferenceArguments))
-    args = parser.parse_args_into_dataclasses()[0]
+def run_inference(args):
 
     # set random seed everywhere for reproducibility
     set_seed(args.seed)
@@ -71,3 +68,8 @@ if __name__ == '__main__':
         end_time = time.time()
         logger.info(f"Finised inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
         logger.info(f"Wrote {c} outputs to {output_file}")
+
+if __name__ == '__main__':
+    parser = HfArgumentParser((InferenceArguments))
+    args = parser.parse_args_into_dataclasses()[0]
+    run_inference(args)

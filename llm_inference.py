@@ -238,7 +238,7 @@ class LLM(object):
             # to optimize the maximum batch size on multiple GPUs, we give the first GPU less memory
             # see max_memory at https://huggingface.co/docs/accelerate/main/en/usage_guides/big_modeling
             max_memory = {
-                i:(f"{math.floor(t*max_memory)}GiB" if i > 0 else f"{math.floor(t*max_memory*0.6)}GiB") for i in range(n_gpus)
+                i:(f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
                 }
             max_memory['cpu'] = '400GiB'
             
@@ -269,10 +269,10 @@ class LLM(object):
         end_time = time.time()
 
         # model_outputs has shape: [num_return_sequences, seq_len]
-        new_tokens = (model_outputs.shape[1] - encoded_inputs['input_ids'].shape[1]) * model_outputs.shape[0]
         cur_batch_size = encoded_inputs['input_ids'].shape[0] # use the actual batch size instead of args.batch_size as these can differ
-        logger.info(f"Generated {(new_tokens) * cur_batch_size} " \
-                    f"new tokens in {end_time - start_time:.4f} seconds " \
+        new_tokens = (model_outputs.shape[1] - encoded_inputs['input_ids'].shape[1]) * model_outputs.shape[0]
+        logger.info(f"Generated {(new_tokens)} new tokens " \
+                    f"in {end_time - start_time:.4f} seconds " \
                     f"(current batch size: {cur_batch_size}).")
         
         model_outputs = self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)
