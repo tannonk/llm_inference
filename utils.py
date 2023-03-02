@@ -89,21 +89,21 @@ def iter_batches(file: str, batch_size: int = 3):
         yield current_batch # don't forget the last one!
 
 
-def get_output_file_name(args: InferenceArguments, ext: str = "jsonl"):
+def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
     """Given all inference arguments, generate output filename for consistency"""
     
     model_name = Path(args.model_name_or_path).name # 'bigscience/bloom-1b1 -> bloom-1b1
     
     test_set = Path(args.input_file).stem.replace('.', '-') # data/asset/dataset/asset.test.orig -> asset-test
     
-    examples = Path(args.examples).stem.replace('.', '_') # data/asset/dataset/asset.valid -> asset-valid
+    examples = Path(args.examples).stem.replace('.', '-') # data/asset/dataset/asset.valid -> asset-valid
     
     assert examples != test_set, f"few-shot prompt examples should not be the same as the test instances!"
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
                                                                 f"{args.few_shot_n}_" \
                                                                 f"{args.n_refs}_" \
-                                                                f"{args.seed}.{ext}"
+                                                                f"{args.seed}{ext}"
 
     # create directory path if necessary
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
