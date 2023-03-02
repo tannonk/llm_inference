@@ -11,7 +11,7 @@ from typing import List, Dict, Tuple, Optional, Union
 from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
 
-from utils import iter_batches, iter_json_lines, serialize_to_jsonl
+from utils import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
 from prompt_utils import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs
 from llm_inference import InferenceArguments, LLM
 
@@ -26,23 +26,28 @@ def run_inference(args):
 
     # Use stdout when output_file is None
     if args.output_file is None and args.output_dir is None:
-        output_file = "stdout"
+        args.output_file = "stdout"
     elif args.output_file is not None:
-        output_file = Path(args.output_file)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+        args.output_file = Path(args.output_file)
+        args.output_file.parent.mkdir(parents=True, exist_ok=True)
+    elif args.output_dir is not None:
+        args.output_file = get_output_file_name(args)
     else:
-        raise NotImplementedError(f"TODO: handle output_dir only")
-
-
+        raise RuntimeError(f"Could not infer output file!")
+    
+    if args.output_file != "stdout":
+        persist_args(args)
+    
     # prepare few-shot examples
     examples = list(iter_json_lines(args.examples))
+    logger.info(f"Few-shot examples will be sampled from {len(examples)} items")
     example_selector = RandomExampleSelector(
             examples=examples, # the examples it has available to choose from.
             few_shot_n=args.few_shot_n,
             n_refs=args.n_refs,
         )
 
-    with open(output_file, "w", encoding="utf8") if output_file != "stdout" else sys.stdout as outf:
+    with open(args.output_file, "w", encoding="utf8") if args.output_file != "stdout" else sys.stdout as outf:
         start_time = time.time()
         c = 0 # counter for generated output sequences
 
@@ -67,7 +72,7 @@ def run_inference(args):
 
         end_time = time.time()
         logger.info(f"Finised inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
-        logger.info(f"Wrote {c} outputs to {output_file}")
+        logger.info(f"Wrote {c} outputs to {args.output_file}")
 
 if __name__ == '__main__':
     parser = HfArgumentParser((InferenceArguments))

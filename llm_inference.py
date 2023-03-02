@@ -158,7 +158,7 @@ class InferenceArguments:
     )
 
     output_dir: str = field(
-        default=None,
+        default="data/outputs/",
         metadata={"help": "Path to output directory"}
     )
 
@@ -212,8 +212,6 @@ class LLM(object):
         # set seed for reproducibility
         self.args = args
 
-        # set_seed(self.args.seed)
-
         self.model = AutoModelForCausalLM.from_pretrained(
             self.args.model_name_or_path, 
             device_map=self.args.device_map, # "auto", 
@@ -227,7 +225,7 @@ class LLM(object):
         logger.info(f"Loaded model {self.args.model_name_or_path} in {end_time - start_time:.4f} seconds")
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
         
-        self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path, padding_side='left')
 
     def set_max_memory(self):
         n_gpus = torch.cuda.device_count()
@@ -240,7 +238,7 @@ class LLM(object):
             max_memory = {
                 i:(f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
                 }
-            max_memory['cpu'] = '400GiB'
+            max_memory['cpu'] = '400GiB' # may need to lower this depending on hardware
             
             logger.info(f"Set maximum memory: {max_memory}")
             return max_memory

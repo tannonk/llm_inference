@@ -25,12 +25,12 @@ python -m slurm_scripts.submit_inference \
 
 
 import os, sys
-from pathlib import Path
 import argparse
 from dataclasses import dataclass, field
 
 from transformers import HfArgumentParser
 from llm_inference import InferenceArguments
+from utils import get_output_file_name
 
 
 @dataclass
@@ -113,10 +113,11 @@ if __name__ == "__main__":
         
         # infer log file path
         if s_args.log_file is None:
-            m = Path(args.model_name_or_path).name
-            t = Path(args.input_file).name.replace('.', '-')        
-            log_file = f"logs/{m}_{t}_{args.few_shot_n}_{args.n_refs}.log"
-            s_args.log_file = log_file
+            s_args.log_file = get_output_file_name(args, ext=".log")
+            # m = Path(args.model_name_or_path).name
+            # t = Path(args.input_file).name.replace('.', '-')        
+            # log_file = f"logs/{m}_{t}_{args.few_shot_n}_{args.n_refs}.log"
+            # s_args.log_file = log_file
             PREFIX += f'--output="{s_args.log_file}" '
 
         if s_args.gres:
@@ -129,12 +130,12 @@ if __name__ == "__main__":
         else: # debug
             SCRIPT = 'slurm_scripts/run_dummy.sh '
 
-    # infer output file for generations
-    if args.output_file is None:
-        m = Path(args.model_name_or_path).name
-        t = Path(args.input_file).name.replace('.', '_')        
-        output_file = f"data/outputs/{m}/{t}_{args.few_shot_n}_{args.n_refs}_{args.seed}.jsonl"
-        args.output_file = output_file
+    # infer output file for generations --> moved to inference.py
+    # if args.output_file is None:
+    #     m = Path(args.model_name_or_path).name
+    #     t = Path(args.input_file).name.replace('.', '_')        
+    #     output_file = f"data/outputs/{m}/{t}_{args.few_shot_n}_{args.n_refs}_{args.seed}.jsonl"
+    #     args.output_file = output_file
     
     SUFFIX = f'--model_name_or_path "{args.model_name_or_path}" ' \
                 f'--max_new_tokens {args.max_new_tokens} ' \
@@ -145,12 +146,13 @@ if __name__ == "__main__":
                 f'--seed {args.seed} ' \
                 f'--do_sample {args.do_sample} ' \
                 f'--top_p {args.top_p} ' \
+                f'--temperature {args.temperature} ' \
                 f'--examples "{args.examples}" ' \
                 f'--input_file "{args.input_file}" ' \
                 f'--n_refs {args.n_refs} ' \
                 f'--few_shot_n {args.few_shot_n} ' \
                 f'--prompt_prefix "{args.prompt_prefix}" ' \
-                f'--output_file "{args.output_file}" '
+                f'--output_dir "{args.output_dir}" '
 
     full_command = PREFIX + SCRIPT + SUFFIX
     print()

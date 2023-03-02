@@ -10,7 +10,10 @@ Generic functions for file handling
 import json
 import logging
 import logging
+from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Union
+
+from llm_inference import InferenceArguments
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +88,45 @@ def iter_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
+
+def get_output_file_name(args: InferenceArguments, ext: str = "jsonl"):
+    """Given all inference arguments, generate output filename for consistency"""
+    
+    model_name = Path(args.model_name_or_path).name # 'bigscience/bloom-1b1 -> bloom-1b1
+    
+    test_set = Path(args.input_file).stem.replace('.', '-') # data/asset/dataset/asset.test.orig -> asset-test
+    
+    examples = Path(args.examples).stem.replace('.', '_') # data/asset/dataset/asset.valid -> asset-valid
+    
+    assert examples != test_set, f"few-shot prompt examples should not be the same as the test instances!"
+
+    output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
+                                                                f"{args.few_shot_n}_" \
+                                                                f"{args.n_refs}_" \
+                                                                f"{args.seed}.{ext}"
+
+    # create directory path if necessary
+    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Model outputs will be written to {output_file}")
+
+    return str(output_file)
+
+def persist_args(args: InferenceArguments):
+    """Writes inference args to file for reference / experiment tracking.
+    The file name is inferred from the name of the output_file."""
+    
+    inference_args_file = Path(args.output_file).parent / f'{Path(args.output_file).stem}_args.json'
+    
+    with open(str(inference_args_file), "w", encoding ="utf8") as outf:
+        json.dump(args.__dict__, outf, ensure_ascii=False, indent=4)
+
+    logger.info(f"Inference args written to {inference_args_file}")
+
+    return
+
 def serialize_to_jsonl(inputs: List[str], outputs: List[str]):
+    """Generator function to write each model output as a json object line by line"""
     for input_sequence, output_sequences in zip(inputs, outputs):
         yield json.dumps({"input_prompt": input_sequence, "model_output": r'\t'.join(output_sequences).strip()}, ensure_ascii=False)
 

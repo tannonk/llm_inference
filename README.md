@@ -59,7 +59,7 @@ python -m scripts.prepare_asset
 To run inference with LLMs available on HuggingFace, run `inference.py` passing the relevant arguments, e.g.:
 
 ```bash
-python inference.py \
+python -m inference \
 	--model_name_or_path "bigscience/bloom-1b1" \
 	--max_new_tokens 100 \
 	--max_memory 0.65 \
@@ -73,13 +73,30 @@ python inference.py \
 	--n_refs 1 \
 	--few_shot_n 3 \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-	--output_file "data/outputs/bloom-1b1/asset.test"
+	--output_dir "data/outputs" \
 ```
 
 where:
 - `--input_file` is a .txt file, with one input sentence per line
 - `--examples` is a JSONL file produced by `scripts.prepare_*.py`, containing validation set examples that may be selected as few-shot examples.
 - `--prompt_prefix` is a string prefix used by LangChain to construct the prompt.
+- Note, by default, an additional JSON file will be generated which persists the inference parameters used for generation.
+
+#### For Slurm Users Only
+
+For experiments executed on a slurm cluster, we provide relevant scripts in `slurm_scripts`. Here you can launch an inference job by specfying the SBATCH commands and inference paramters using `slurm_scripts/submit_inference.py`, e.g.:
+
+```bash
+python -m slurm_scripts.submit_inference \
+	--use_slurm True --ntasks 1 --cpus_per_task 1 --gres gpu:T4:1 --mem 32GB --time 01:00:00 \ `# SBATCH commands`
+	--model_name_or_path "facebook/opt-iml-1.3b" \ `# inference commands`
+	--examples "data/asset/dataset/asset.valid.jsonl" \
+	--input_file "data/asset/dataset/asset.test.orig" \
+	--output_dir "data/outputs" \
+	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
+```
+
+This script will also write a job log file in the `--output_dir`.
 
 ## Prompting
 
@@ -120,8 +137,6 @@ The following table is based off of generating with the following params (unless
 | bigscience/bloom  | 	167.5 GB	    | 947.3935 secs | ~45 secs (bs=8) |          ?        | 4 (A100) |
 | bigscience/bloom-560m | 0.78GB        |        ?      | ~10 secs (bs=4) |         6GB       |  1 (T4)  |
 | bigscience/bloom-1b1  | 1.35GB        |        ?      | ~10 ses (bs=4)  |         8GB       |  1 (T4)  |
-
-
 
 
 ## Limitations
