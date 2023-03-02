@@ -6,7 +6,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=/data/tkew/projects/llm_ats/logs/%j.out
 
-# set -x
+set -x
 
 # defaults
 BASE='/data/tkew/projects/llm_ats'
