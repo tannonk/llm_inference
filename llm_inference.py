@@ -88,7 +88,7 @@ class InferenceArguments:
     )
 
     batch_size: int = field(
-        default=1,
+        default=8,
         metadata={"help": "Batch size for predictions"}
     )
 

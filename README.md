@@ -37,6 +37,23 @@ pip install -r requirements.txt
 python -m bitsandbytes
 ```
 
+
+## Data
+
+To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_data.sh`. 
+This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
+
+```bash
+bash scripts/fetch_data.sh
+```
+
+Once you have downloaded the raw datasets, we can prepare them for inference using the relevant `prepare_*.py` script.
+For example, to prepare ASSET, run
+
+```bash
+python -m scripts.prepare_asset
+```
+
 ## Examples
 
 To run inference with LLMs available on HuggingFace, run `inference.py` passing the relevant arguments, e.g.:
@@ -56,49 +73,55 @@ python inference.py \
 	--n_refs 1 \
 	--few_shot_n 3 \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-	--output_file  "data/outputs/bloom-1b1/asset.test"
+	--output_file "data/outputs/bloom-1b1/asset.test"
 ```
 
-The argument `--input_file` should be a JSONL file containing the following dictionary-like object on each line:
+where:
+- `--input_file` is a .txt file, with one input sentence per line
+- `--examples` is a JSONL file produced by `scripts.prepare_*.py`, containing validation set examples that may be selected as few-shot examples.
+- `--prompt_prefix` is a string prefix used by LangChain to construct the prompt.
 
-```json
-{
-    "examples": 
-        [
-            "few-shot prompt 1", 
-            "few-shot prompt 2", 
-            "few-shot prompt 3",
-            "etc."
-        ], 
-    "src": "src text / prompt for continuation"
-}
+## Prompting
+
+To construct prompts flexibly, we use [LangChain](https://github.com/hwchase17/langchain).
+
+A valid prompt may look something like the following:
+
+```
+I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.
+
+Complex: The Hubble Space Telescope observed Fortuna in 1993.
+Simple: 0: The Hubble Space Telescope spotted Fortuna in 1993.
+
+Complex: Order # 56 / CMLN of 20 October 1973 prescribed the coat of arms of the Republic of Mali.
+Simple: 0: In 1973, order #56/CMLN described the coat of arms for the Republic of Mali.
+
+Complex: In the 1950s Camus devoted his efforts to human rights.
+Simple: 0: In the 1950s Camus worked on human rights.
+
+Complex: One side of the armed conflicts is composed mainly of the Sudanese military and the Janjaweed, a Sudanese militia group recruited mostly from the Afro-Arab Abbala tribes of the northern Rizeigat region in Sudan.
+Simple:
 ```
 
-## Data
-
-To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_data.sh`. 
-This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
-
-```bash
-bash scripts/fetch_data.sh
-```
-
-Once you have downloaded the raw datasets, we can prepare them for inference using the relevant `prepare_*.py` script.
-For example, to prepare ASSET, run
-
-```bash
-python -m scripts.prepare_asset
-```
+The example corresponds to the T1 prompt described in [Feng et al., 2023](http://arxiv.org/abs/2302.11957).
 
 ## Observations
 
 Below are some observations from running inference with LLMs:
 
 1. Beam search uses significantly more GPU memory compared to sampling-based decoding methods with `num_beams=1`
-2. Inference with `bigscience/bloom-560m` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~6GB GPU memory
-3. Inference with `bigscience/bloom-1b1` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~8GB GPU memory
-4. The model footprint for `bigscience/bloom-560m` with `load_in_8bit=True` is ~0.78GB
-5. The model footprint for `bigscience/bloom-1b1` with `load_in_8bit=True` is ~1.35GB
+<!-- 2. Inference with `bigscience/bloom-560m` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~6GB GPU memory -->
+<!-- 3. Inference with `bigscience/bloom-1b1` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~8GB GPU memory -->
+
+The following table is based off of generating with the following params (unless otherwise specified): `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9`
+
+| 		Model 		| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |  # GPUS  |
+| :---------------: | :---------------: | :-----------: | :-------------: | :---------------: | :------: |
+| bigscience/bloom  | 	167.5 GB	    | 947.3935 secs | ~45 secs (bs=8) |          ?        | 4 (A100) |
+| bigscience/bloom-560m | 0.78GB        |        ?      | ~10 secs (bs=4) |         6GB       |  1 (T4)  |
+| bigscience/bloom-1b1  | 1.35GB        |        ?      | ~10 ses (bs=4)  |         8GB       |  1 (T4)  |
+
+
 
 
 ## Limitations
