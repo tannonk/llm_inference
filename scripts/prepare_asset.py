@@ -46,7 +46,7 @@ def gather_complex_simple_sentences(split):
 
 for split in ["test", "valid"]:
     dataset = gather_complex_simple_sentences(split)
-    outfile = asset_dir / f"{split}.jsonl"
+    outfile = asset_dir / f"asset.{split}.jsonl"
     c = 0
     with open(outfile, "w", encoding="utf8") as outf:
         for item in dataset:
