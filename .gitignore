@@ -1,7 +1,7 @@
 rrgen/
 installs/
 __pycache__/
-slurm_scripts/
+scratch/
 *.pyc
 slurm-*
 *.out
@@ -10,3 +10,4 @@ slurm-*
 data/asset/
 data/outputs/
 prompts/
+logs/
