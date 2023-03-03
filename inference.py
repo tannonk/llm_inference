@@ -66,8 +66,6 @@ def run_inference(args):
                 example_separator=args.example_separator,
             )
 
-            print(inputs)
-            breakpoint()
             outputs = llm.generate_from_model(inputs)
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
