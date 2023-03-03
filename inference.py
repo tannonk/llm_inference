@@ -27,12 +27,12 @@ def run_inference(args):
     # Use stdout when output_file and output_dir is not specified (e.g. for debugging)
     if not args.output_file and not args.output_dir:
         args.output_file = "stdout"
-    elif not args.output_file:
+    elif args.output_file and not args.output_dir:
         args.output_file = Path(args.output_file)
         args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    elif not args.output_dir:
+    elif not args.output_file and args.output_dir:
         args.output_file = get_output_file_name(args)
-        args.output_file.parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output_file).parent.mkdir(parents=True, exist_ok=True)
     else:
         raise RuntimeError(f"Could not infer output file!")
     
