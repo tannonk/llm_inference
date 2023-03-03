@@ -30,23 +30,23 @@ import json
 from pathlib import Path
 from utils import *
 
-asset_dir = Path("data/asset/dataset")
+data_dir = Path("data/asset/dataset")
 
 def gather_complex_simple_sentences(split):
     dataset = []
     src_file = f"asset.{split}.orig"
-    for src_line in iter_lines(asset_dir / src_file):
+    for src_line in iter_lines(data_dir / src_file):
         dataset.append({"complex": src_line, "simple": []})
     
     for simp_version in range(10):
         tgt_file = f"asset.{split}.simp.{simp_version}"
-        for i, tgt_line in enumerate(iter_lines(asset_dir / tgt_file)):
+        for i, tgt_line in enumerate(iter_lines(data_dir / tgt_file)):
             dataset[i]["simple"].append(tgt_line)
     return dataset
 
 for split in ["test", "valid"]:
     dataset = gather_complex_simple_sentences(split)
-    outfile = asset_dir / f"asset.{split}.jsonl"
+    outfile = data_dir / f"asset.{split}.jsonl"
     c = 0
     with open(outfile, "w", encoding="utf8") as outf:
         for item in dataset:

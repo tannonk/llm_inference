@@ -154,7 +154,7 @@ class InferenceArguments:
 
     input_file: str = field(
         default=None,
-        metadata={"help": "Input file containing prompt generations"}
+        metadata={"help": "Input file containing source sentences"}
     )
 
     output_dir: str = field(
@@ -165,6 +165,11 @@ class InferenceArguments:
     output_file: str = field(
         default=None,
         metadata={"help": "Output file for model generations"}
+    )
+
+    source_key: str = field(
+        default="complex",
+        metadata={"help": "Key for source sentences in input file. Only used if input file is a JSONL file."}
     )
 
     # write_to_file: str = field(

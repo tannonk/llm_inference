@@ -17,7 +17,7 @@ from llm_inference import InferenceArguments
 
 logger = logging.getLogger(__name__)
 
-def iter_lines(file):
+def iter_text_lines(file):
     """Generator that yields lines from a regular text file."""
     with open(file, 'r') as f:
         for line in f:
@@ -36,6 +36,13 @@ def iter_json_lines(file: str):
                 continue
             else:
                 yield json.loads(line)
+
+def iter_lines(file: str):
+    """Wraps `iter_text_lines` and `iter_json_lines` to fetch lines from file"""
+    if file.endswith(".jsonl"):
+        return iter_json_lines(file)
+    else:
+        return iter_text_lines(file)
 
 def load_few_shot_prompts(fsp_file: str) -> List[str]:
     """Returns a list of few-shot prompts."""
@@ -73,7 +80,7 @@ def iter_json_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
-def iter_batches(file: str, batch_size: int = 3):
+def iter_text_batches(file: str, batch_size: int = 3):
     """Fetch batched lines from file"""
     current_batch = []
     c = 0
@@ -88,6 +95,12 @@ def iter_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
+def iter_batches(file: str, batch_size: int = 3):
+    """Wraps `iter_text_batches` and `iter_json_batches` to fetch batched lines from file"""
+    if file.endswith(".jsonl"):
+        return iter_json_batches(file, batch_size)
+    else:
+        return iter_text_batches(file, batch_size)
 
 def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
     """Given all inference arguments, generate output filename for consistency"""

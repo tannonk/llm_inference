@@ -68,8 +68,8 @@ python -m inference \
 	--num_return_sequences 1 \
 	--do_sample True \
 	--top_p 0.9 \
-	--input_file "data/asset/dataset/asset.test.orig" \
-	--examples "data/asset/dataset/valid.jsonl" \
+	--input_file "data/asset/dataset/asset.test.jsonl" \
+	--examples "data/asset/dataset/asset.valid.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
@@ -77,10 +77,11 @@ python -m inference \
 ```
 
 where:
-- `--input_file` is a .txt file, with one input sentence per line
+- `--input_file` is a either a .txt file, with one input sentence per line or a JSONL file produced by `scripts.prepare_*.py`. For consistency we recommend the latter.
 - `--examples` is a JSONL file produced by `scripts.prepare_*.py`, containing validation set examples that may be selected as few-shot examples.
 - `--prompt_prefix` is a string prefix used by LangChain to construct the prompt.
-- Note, by default, an additional JSON file will be generated which persists the inference parameters used for generation.
+- NB I: by default, an additional JSON file will be generated which persists the inference parameters used for generation.
+- NB II: specify `--output_dir ''` to print your outputs to stdout (good for debugging/development purposes)
 
 #### For Slurm Users Only
 
@@ -90,8 +91,8 @@ For experiments executed on a slurm cluster, we provide relevant scripts in `slu
 python -m slurm_scripts.submit_inference \
 	--use_slurm True --ntasks 1 --cpus_per_task 1 --gres gpu:T4:1 --mem 32GB --time 01:00:00 \ `# SBATCH commands`
 	--model_name_or_path "facebook/opt-iml-1.3b" \ `# inference commands`
+	--input_file "data/asset/dataset/asset.test.jsonl" \
 	--examples "data/asset/dataset/asset.valid.jsonl" \
-	--input_file "data/asset/dataset/asset.test.orig" \
 	--output_dir "data/outputs" \
 	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
 ```

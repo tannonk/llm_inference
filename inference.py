@@ -23,15 +23,16 @@ def run_inference(args):
     set_seed(args.seed)
     
     llm = LLM(args)
-
-    # Use stdout when output_file is None
-    if args.output_file is None and args.output_dir is None:
+    
+    # Use stdout when output_file and output_dir is not specified (e.g. for debugging)
+    if not args.output_file and not args.output_dir:
         args.output_file = "stdout"
-    elif args.output_file is not None:
+    elif not args.output_file:
         args.output_file = Path(args.output_file)
         args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    elif args.output_dir is not None:
+    elif not args.output_dir:
         args.output_file = get_output_file_name(args)
+        args.output_file.parent.mkdir(parents=True, exist_ok=True)
     else:
         raise RuntimeError(f"Could not infer output file!")
     
@@ -52,6 +53,10 @@ def run_inference(args):
         c = 0 # counter for generated output sequences
 
         for input_batch in tqdm(iter_batches(args.input_file, args.batch_size)):
+            # input file can be a text file or a jsonl file, in the latter case 
+            # we assume that the input sentence is in the key specified by args.source_key
+            if isinstance(input_batch[0], dict):
+                input_batch = [i[args.source_key] for i in input_batch]
             inputs = prepare_prompted_inputs(
                 inputs=input_batch,
                 example_selector=example_selector,
