@@ -302,8 +302,11 @@ class LLM(object):
         # pack outputs into a list of lists, i.e. batch_size x num_return_seqs
         outputs = [outputs[i:i+return_seqs_per_input]for i in range(0, num_return_sequences, return_seqs_per_input)]
         
-        assert len(outputs) == input_batch_size
-        assert len(outputs[0]) == return_seqs_per_input
+        if len(outputs) != input_batch_size:
+            raise ValueError(f"Got {len(outputs)} outputs from model but expected {input_batch_size}!")
+        
+        if len(outputs[0]) != return_seqs_per_input:
+            raise ValueError(f"Got {len(outputs[0])} return sequences but expected {return_seqs_per_input}!")
 
         return outputs
 

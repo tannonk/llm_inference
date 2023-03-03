@@ -67,7 +67,8 @@ def merge_prompts(prompts: List[str], fsprompts: Optional[List[str]] = None) -> 
     elif len(fsprompts) == 1: # every input is concatenated with the same fsprompt
         return [fsprompts[0] + prompt for prompt in prompts]
     else:
-        assert len(fsprompts) == len(prompts)
+        if len(fsprompts) != len(prompts):
+            raise RuntimeError("Number of few-shot prompts must be 1 or equal to number of prompts!")
         return [fsprompts[i] + prompts[i] for i in range(len(prompts))]
 
 def iter_json_batches(file: str, batch_size: int = 3):
@@ -116,7 +117,8 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
     
     examples = Path(args.examples).stem.replace('.', '-') # data/asset/dataset/asset.valid -> asset-valid
     
-    assert examples != test_set, f"few-shot prompt examples should not be the same as the test instances!"
+    if examples == test_set: # this may be necessary to avoid if no validation set is available
+        raise RuntimeError("Few-shot prompt examples should not be the same as the test instances!")
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
                                                                 f"{args.few_shot_n}_" \

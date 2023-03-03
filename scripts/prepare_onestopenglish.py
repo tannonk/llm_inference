@@ -48,7 +48,8 @@ for level_sets in ["ADV-ELE", "ADV-INT", "ELE-INT"]:
         else: # odd lines are target
             tgt_lines.append(line)
 
-    assert len(src_lines) == len(tgt_lines)
+    if len(src_lines) != len(tgt_lines):
+        raise ValueError(f"Unequal number of source and target lines: {len(src_lines)} vs {len(tgt_lines)}")
 
     outfile = data_dir / f"ose.{src}-{tgt}.jsonl"
     c = 0
