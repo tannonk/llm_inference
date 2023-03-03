@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
+# __Author__ = 'Tannon Kew'
+# __Email__ = 'kew@cl.uzh.ch
+# __Date__ = '2023-03-03'
+
 set -e
 
 SCRIPTS_DIR=$(cd $(dirname -- $0); pwd)

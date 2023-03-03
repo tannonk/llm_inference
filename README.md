@@ -149,3 +149,5 @@ The function `postprocess_model_outputs()` is used to extract the single relevan
 
 - [x] task-specific prompts
 - [ ] datasets and data prep
+	- [ ] Newsela
+	- [ ] Hsplit

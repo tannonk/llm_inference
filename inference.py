@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# __Author__ = 'Tannon Kew'
+# __Email__ = 'kew@cl.uzh.ch
+# __Date__ = '2023-03-03'
+
 import sys
 import time
 from pathlib import Path
