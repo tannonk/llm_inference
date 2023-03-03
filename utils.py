@@ -39,7 +39,7 @@ def iter_json_lines(file: str):
 
 def iter_lines(file: str):
     """Wraps `iter_text_lines` and `iter_json_lines` to fetch lines from file"""
-    if file.endswith(".jsonl"):
+    if file.endswith(".jsonl") or file.endswith(".json"):
         return iter_json_lines(file)
     else:
         return iter_text_lines(file)
@@ -97,7 +97,7 @@ def iter_text_batches(file: str, batch_size: int = 3):
 
 def iter_batches(file: str, batch_size: int = 3):
     """Wraps `iter_text_batches` and `iter_json_batches` to fetch batched lines from file"""
-    if file.endswith(".jsonl"):
+    if file.endswith(".jsonl") or file.endswith(".json"):
         return iter_json_batches(file, batch_size)
     else:
         return iter_text_batches(file, batch_size)

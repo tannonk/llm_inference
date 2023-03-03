@@ -57,16 +57,17 @@ def run_inference(args):
             # we assume that the input sentence is in the key specified by args.source_key
             if isinstance(input_batch[0], dict):
                 input_batch = [i[args.source_key] for i in input_batch]
+            
             inputs = prepare_prompted_inputs(
                 inputs=input_batch,
                 example_selector=example_selector,
                 prefix=args.prompt_prefix,
                 suffix=r"Complex: {input}\nSimple:",
-                few_shot_n=args.few_shot_n,
-                n_refs=args.n_refs,
                 example_separator=args.example_separator,
             )
 
+            print(inputs)
+            breakpoint()
             outputs = llm.generate_from_model(inputs)
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)

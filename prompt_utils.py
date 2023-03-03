@@ -39,7 +39,8 @@ class RandomExampleSelector(BaseExampleSelector):
 
     def select_examples(self, input_variables: Dict[str, str]) -> List[dict]:
         """Select which examples to use based on the inputs.""" 
-        return self.flatten_references(random.sample(self.examples, self.few_shot_n), n_refs=self.n_refs)
+        examples = random.sample(self.examples, self.few_shot_n)
+        return self.flatten_references(examples, n_refs=self.n_refs)
 
     @staticmethod
     def flatten_references(
@@ -65,13 +66,20 @@ class RandomExampleSelector(BaseExampleSelector):
         flat_examples = []
         for ex in examples:
             flat_ex = {}
-            flat_ex["complex"] = ex[src_key]
-            if isinstance(ex[tgt_key], list):
-                simple_references = random.sample(ex[tgt_key], n_refs)
-                simple_references = [f"{i}: {ref}" for i, ref in enumerate(simple_references)]
-                flat_ex["simple"] = f' '.join(simple_references)
-            else:
-                flat_ex["simple"] = ex[tgt_key]
+            flat_ex[src_key] = ex[src_key]
+            # if multiple references are available, select n_refs at random 
+            if isinstance(ex[tgt_key], list): # note if n_refs > number of references, use all references and warn user
+                simple_references = random.sample(ex[tgt_key], min(n_refs, len(ex[tgt_key])))
+                # enumerate multiple references for easy identification/separation if needed
+                if n_refs > 1:
+                    simple_references = [f"{i}: {ref}" for i, ref in enumerate(simple_references)]
+                    if len(simple_references) < n_refs:
+                        logger.warning(f"Fewer than {n_refs} references available for examples provided! Using {len(simple_references)} references instead.")
+                flat_ex[tgt_key] = f' '.join(simple_references)
+            else: # if only one reference is available, use it
+                if n_refs > 1: # if user specified n_refs > 1, warn them that only one reference is available
+                    logger.warning(f"Fewer than {n_refs} references available for examples provided!")
+                flat_ex[tgt_key] = ex[tgt_key]
             flat_examples.append(flat_ex) 
         return flat_examples
 
@@ -82,10 +90,7 @@ def prepare_prompted_inputs(
     example_selector: Optional[BaseExampleSelector] = None,
     prefix: str = "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
     suffix: str = "Complex: {input}\nSimple:",
-    few_shot_n: int = 0, 
-    n_refs: int = 1,
     example_separator: str = r"\n\n",
-    ref_delimiter: str = r"\t",
     ):
 
     if examples is None and example_selector is None:
@@ -108,71 +113,6 @@ def prepare_prompted_inputs(
         prompted_inputs.append(few_shot_prompt.format(input=i))
 
     return prompted_inputs
-
-# def flatten_references(examples: Iterable, src_key: str = "complex", tgt_key: str = "simple", n_refs: int = 1) -> List[Dict]:
-#     """
-#     Handles multi-reference examples for few-shot prompting.
-
-#     Datasets such as ASSET provide 10 reference simplifications for each complex sentence.
-#     We select n_refs at random from the available reference simplifications to provide as examples in few-shot prompting.
-#     Each reference simplification is separated by '\\t'
-
-#     Args:
-#         examples :: an iterable containing dictionaries with src_key and tgt_key
-#         src_key :: name of the key for the src sequence
-#         tgt_key :: name of the key for the tgt sequence
-#         n_refs :: number of target references to use in a prompt
-
-#     """
-#     flat_examples = []
-#     for ex in examples:
-#         flat_ex = {}
-#         flat_ex["complex"] = ex[src_key]
-#         if isinstance(ex[tgt_key], list):
-#             flat_ex["simple"] = '\t'.join(random.sample(ex[tgt_key], n_refs))
-#         else:
-#             flat_ex["simple"] = ex[tgt_key]
-#         flat_examples.append(flat_ex) 
-#     return flat_examples
-
-# Alternative input expected - currently not used
-# def flatten_references(examples, src_key: str = "complex", tgt_key: Optional[str] = None, n_refs: int = 1):
-#     """
-#     Handles multi-reference examples for few-shot prompting 
-
-#     Datasets such as ASSET provide 10 reference simplifications for each complex sentence.
-#     We select n_refs at random from the available reference simplifications to provide as examples in few-shot prompting.
-#     Each reference simplification is separated by '\\t'
-#     """
-#     flat_examples = [{} for _ in examples]
-
-#     for i in range(len(examples)):
-#         flat_examples[i]["complex"] = examples[i].pop(src_key) # removes the source key,value pair
-#         if tgt_key is None:
-#             tgt_keys = random.sample(list(examples[i].keys()), n_refs) # assumes all remaining keys are potential targets
-#             flat_examples[i]["simple"] = '\t'.join([examples[i].get(tgt_key) for tgt_key in tgt_keys]) # randomly select references for example
-#         else:
-#             flat_examples[i]["simple"] = examples[i].pop(tgt_key)
-#     return flat_examples
-
-
-# redundant
-# def prepare_inputs(examples: List[Dict], few_shot_n: int = 0, delimiter: str = '***', seed: int = 42) -> List[str]:
-#     """
-#     prepares few-shot (or zero-shot) inputs for LLM inference
-#     """
-    
-#     inputs = []
-#     for ex in examples:
-#         if few_shot_n == 0:
-#             inputs.append(ex['src'])
-#         elif isinstance(ex['examples'], list):
-#             assert few_shot_n <= len(ex['examples']), f"few_shot_n ({few_shot_n}) can not be greater than the number of available examples ({len(ex['examples'])})"
-#             input_str = delimiter.join(random.sample(ex['examples'], few_shot_n)) + delimiter + ex['src']
-#             inputs.append(input_str)
-#         else:
-#             raise NotImplementedError(f'Expected examples to be a list of examples, but got {type(ex["examples"])}')
-#     return inputs
 
 def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], example_separator: str = r'\n\n', ref_delimiter: str = r'\t') -> List[List[str]]:
     """
