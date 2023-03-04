@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
+"""
+Code slightly modified from Tannon Kew's
+https://github.com/ZurichNLP/SimpleFUDGE/blob/master/ats_data/extract_aligned_sents_wiki_newsela_manual.py
+
+Modifier: Alison Chi
+"""
+
 from typing import List
 from string import punctuation
 import re
@@ -53,7 +64,6 @@ def extract_pairs(df, cid: List, tgt_level: int):
     c_level = get_level_from_full_id(cid)
     if c_level == tgt_level:  # found aligned simple units
         sub_df = df[df['sid'].isin(cid)]
-        # extracted_levs = [get_level_from_full_id(s_id) for s_id in sub_df.sid]
         sents = ' '.join(dedup_sents(sub_df.ssent.tolist()))
         return sents
 
@@ -105,7 +115,6 @@ def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4):
         print(f'Removed `notAligned`. DF contains {len(df)} items')
 
     root_nodes = [[id] for id in df['cid'].unique() if get_level_from_full_id([id]) == complex_level]
-    # root_levs = [get_level_from_full_id([id]) for id in df['cid'].unique()]
 
     if verbose:
         print(len(root_nodes))
@@ -143,17 +152,20 @@ def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4):
 
 
 if __name__ == '__main__':
+    # For more efficient preprocessing:
     exclude = set(punctuation)
     specials = '~`—$%^#@&*_+=-–<>'
     for c in specials:
         exclude.add(c)
+
     crowd_testfile = 'data/newsela-auto/newsela-manual/crowdsourced/test.tsv'
     all_testfile = 'data/newsela-auto/newsela-manual/all/test.tsv'
     files = {'crowdsourced_test': crowd_testfile, 'all_test': all_testfile}
 
-    for k,file in files.items():
+    for k, file in files.items():
         outname = f'news_manual_{k}.jsonl'
         all_pairs = []
+        # looping over every level combination to create a single file
         for complex_lev in range(4):
             for simp_lev in range(complex_lev+1, 5):
                 align_objs = parse_newsela_data(infile=file, simple_level=simp_lev, complex_level=complex_lev)
