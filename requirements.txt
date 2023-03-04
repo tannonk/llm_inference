@@ -6,3 +6,5 @@ nltk==3.8.1
 torch==1.13.1
 # transformers
 sentencepiece==0.1.97
+pandas
+jsonlines
