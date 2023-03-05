@@ -94,14 +94,11 @@ def full_prep(sent: str):
     but it will be more accurate that way.
     """
     sent = ' '.join(word_tokenize(sent)).lower()
-    # doc = nlp(sent)
-    # tok_list = [str(tok) for tok in doc]
-    # tok_sent = ' '.join(tok_list)
     tok_sent = punc_prep(sent)
     return tok_sent
 
 
-def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4):
+def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4, filter_copies=False):
     """
     Processes annotated alignment file from Newsela-Manual (e.g. `newsela-auto/newsela-manual/all/test.tsv`)
     """
@@ -141,18 +138,18 @@ def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4):
     objects = []
     tgt_is_copy_count = 0
     for src, tgt, _ in alignments:
-        if full_prep(src) != full_prep(tgt):
+        if not filter_copies or full_prep(src) != full_prep(tgt):
             objects.append({'complex': src, 'simple': tgt, 'complex_level': complex_level, 'simple_level': simple_level})
-        else:
+        elif filter_copies:
             tgt_is_copy_count += 1
-    if verbose:
+    if verbose and filter_copies:
         print(f'Target was a copy {tgt_is_copy_count} times')
     print(f'Finished processing {len(objects)} alignments from level {complex_level} to {simple_level}')
     return objects
 
 
 if __name__ == '__main__':
-    # For more efficient preprocessing:
+    # For more efficient preprocessing
     exclude = set(punctuation)
     specials = '~`—$%^#@&*_+=-–<>'
     for c in specials:
