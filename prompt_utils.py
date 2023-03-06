@@ -95,8 +95,23 @@ def prepare_prompted_inputs(
     prefix: str = "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
     suffix: str = "Complex: {input}\nSimple:",
     example_separator: str = r"\n\n",
+    prompt_format: str = "prefix_initial",
     ):
+    """
+    Constructs few-shot prompts for a batch of inputs.
 
+    Args:
+        inputs :: a list of strings to be prompted
+        examples :: a list of dictionaries containing the examples to be used in the prompt
+        example_selector :: an ExampleSelector object to select examples from the examples list
+        prefix :: a string to be added to the beginning of the prompt
+        suffix :: a string to be added to the end of the prompt
+        example_separator :: a string to be added between each example in the prompt
+        prompt_format :: a string specifying the format of the prompt. 
+            Options are prefix_initial or prefix_every:
+            - if prefix_initial, the prefix is added to the beginning of the prompt and the examples are separated by example_separator.
+            - if prefix_every, the example_separator is modified to include the prefix at the beginning of each example.
+    """
     if examples is None and example_selector is None:
         raise RuntimeError(f"Expected either `examples` or a valid `example_selector` but got None")
 
@@ -104,17 +119,30 @@ def prepare_prompted_inputs(
 
     for i in inputs:
         
-        few_shot_prompt = FewShotPromptTemplate(
-            examples=None if example_selector is None else examples,
-            example_selector=example_selector, # use an ExampleSelector instead of examples.
-            example_prompt=simple_prompt, # examples format
-            prefix=prefix,
-            suffix=suffix,
-            input_variables=["input"], # the variables that the overall prompt expects
-            example_separator=example_separator, # string used to join the prefix, examples, and suffix together
-        )
-
-        prompted_inputs.append(few_shot_prompt.format(input=i))
+        if prompt_format == "prefix_initial":
+            few_shot_prompt = FewShotPromptTemplate(
+                examples=None if example_selector is None else examples,
+                example_selector=example_selector, # use an ExampleSelector instead of examples.
+                example_prompt=simple_prompt, # examples format
+                prefix=prefix,
+                suffix=suffix,
+                input_variables=["input"], # the variables that the overall prompt expects
+                example_separator=example_separator, # string used to join the prefix, examples, and suffix together
+            )
+        elif prompt_format == "prefix_every":
+            # If using prefix_every, the examples separator is expanded to include the prefix.
+            few_shot_prompt = FewShotPromptTemplate(
+                examples=None if example_selector is None else examples,
+                example_selector=example_selector, # use an ExampleSelector instead of examples.
+                example_prompt=simple_prompt, # examples format
+                prefix=' ', # prefix is added to the example_separator instead
+                suffix=suffix,
+                input_variables=["input"], # the variables that the overall prompt expects
+                example_separator=example_separator + prefix + example_separator, # string used to join the prefix, examples, and suffix together
+            )
+        
+        # To avoid prompt-initial white-space characters, we strip the base example_separator from first example
+        prompted_inputs.append(few_shot_prompt.format(input=i).strip().lstrip(example_separator))
 
     return prompted_inputs
 
@@ -170,14 +198,38 @@ if __name__ == "__main__":
 
     # load_prompt("prompts/ss_p1.json") # doesn't allow for example selector (?)
 
-    dataset = "data/asset/dataset/valid.jsonl"
+    dataset = "data/asset/dataset/asset.valid.jsonl"
+    few_shot_n = 3
     n_refs = 2
-    # seed = 3
+    random.seed(42)
 
-    print(prepare_prompted_inputs(
-        inputs = ["It is particularly famous for the cultivation of kiwifruit."],
-        examples = list(iter_json_lines(dataset)),
-        few_shot_n = 3,
-        n_refs = n_refs,
-        # seed=seed
-    ))
+    examples = list(iter_json_lines(dataset))
+    
+    example_selector = RandomExampleSelector(
+            examples=examples, # the examples it has available to choose from.
+            few_shot_n=few_shot_n,
+            n_refs=n_refs,
+        )
+
+    inputs = prepare_prompted_inputs(
+        inputs=['I am a complex sentence.'],
+        example_selector=example_selector,
+        prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+        suffix=r"Complex: {input}\nSimple:",
+        example_separator=r"\n\n",
+        prompt_format="prefix_every",
+    )
+
+    print(inputs)
+
+
+    inputs = prepare_prompted_inputs(
+        inputs=['I am a complex sentence.'],
+        example_selector=example_selector,
+        prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+        suffix=r"Complex: {input}\nSimple:",
+        example_separator=r"\n\n",
+        prompt_format="prefix_initial",
+    )
+
+    print(inputs)
