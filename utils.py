@@ -14,7 +14,7 @@ Generic functions for file handling
 
 import json
 import logging
-import logging
+import hashlib
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Union
 
@@ -108,6 +108,7 @@ def iter_batches(file: str, batch_size: int = 3):
     else:
         return iter_text_batches(file, batch_size)
 
+
 def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
     """Given all inference arguments, generate output filename for consistency"""
     
@@ -117,18 +118,23 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
     
     examples = Path(args.examples).stem.replace('.', '-') # data/asset/dataset/asset.valid -> asset-valid
     
+    prompt_hash = hashlib.sha1(args.prompt_prefix.encode("UTF-8")).hexdigest()[:8]
+
     if examples == test_set: # this may be necessary to avoid if no validation set is available
         raise RuntimeError("Few-shot prompt examples should not be the same as the test instances!")
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
+                                                                f"{prompt_hash}_" \
                                                                 f"{args.few_shot_n}_" \
                                                                 f"{args.n_refs}_" \
                                                                 f"{args.seed}{ext}"
 
-    # create directory path if necessary
-    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-
-    logger.info(f"Model outputs will be written to {output_file}")
+    if Path(output_file).exists():
+        logger.warning(f"Output file {output_file} already exists! Overwriting...")
+    else:
+        # create directory path if necessary
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Model outputs will be written to {output_file}")
 
     return str(output_file)
 

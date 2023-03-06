@@ -135,9 +135,11 @@ The following table is based off of generating with the following params (unless
 
 | 		Model 		| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |  # GPUS  |
 | :---------------: | :---------------: | :-----------: | :-------------: | :---------------: | :------: |
-| bigscience/bloom  | 	167.5 GB	    | 947.3935 secs | ~45 secs (bs=8) |          ?        | 4 (A100) |
 | bigscience/bloom-560m | 0.78GB        |        ?      | ~10 secs (bs=4) |         6GB       |  1 (T4)  |
 | bigscience/bloom-1b1  | 1.35GB        |        ?      | ~10 ses (bs=4)  |         8GB       |  1 (T4)  |
+| bigscience/bloom  | 	167.5 GB	    |    15 mins    | ~45 secs (bs=8) |          ?        | 4 (A100) |
+| facebook/opt-iml-max-30b |  28.26GB   |     5 mins    | ~10 secs (bs=8) |          ?        | 1 (A100) |
+| facebook/opt-66b      |    28.26GB    |     5 mins    | ~10 secs (bs=8) |          ?        | 1 (A100) |
 
 
 ## Limitations
