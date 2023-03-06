@@ -125,6 +125,7 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
                                                                 f"{prompt_hash}_" \
+                                                                f"{args.prompt_format}_" \
                                                                 f"{args.few_shot_n}_" \
                                                                 f"{args.n_refs}_" \
                                                                 f"{args.seed}{ext}"

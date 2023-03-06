@@ -186,6 +186,11 @@ class InferenceArguments:
         metadata={"help": "Prefix for generation prompt. This is passed to LangChain."}
     )
 
+    prompt_format: str = field(
+        default="prefix_initial",
+        metadata={"help": "Format for generation prompt. See description in prompt_utils.py."}
+    )
+
     few_shot_n: int = field(
         default=0,
         metadata={"help": "number of examples to use as few-shot in-context examples"}

@@ -14,7 +14,8 @@ mkdir installs
 ml multigpu anaconda3
 
 # create a clean conda environment
-conda create -n llm_hf1 -c conda-forge python=3.9 cudatoolkit-dev=11.6 -y
+# NOTE: we recommend using CUDA 11.6, but others may work too
+conda create -n llm_hf1 -c conda-forge python=3.9 cudatoolkit=11.6 cudatoolkit-dev=11.6 -y
 conda activate llm_hf1
 
 # install transformers from source
@@ -23,12 +24,19 @@ cd installs/transformers
 pip install -e .
 cd ../..
 
+# NOTE: for efficient inference, we use 8bit quantization with bitsandbytes. 
+# This requires Turing or Ampere GPUs (RTX 20s, RTX 30s, A40-A100, T4+)
 # install bitsandbytes from source
 git clone https://github.com/TimDettmers/bitsandbytes.git installs/bitsandbytes
 cd installs/bitsandbytes
 CUDA_VERSION=116 make cuda11x
 python setup.py install
 cd ../..
+
+# # install promptsource from source
+# git clone https://github.com/bigscience-workshop/promptsource.git installs/promptsource
+# cd installs/promptsource
+# pip install -e .
 
 # install other deps
 pip install -r requirements.txt

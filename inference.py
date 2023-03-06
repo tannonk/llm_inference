@@ -68,6 +68,7 @@ def run_inference(args):
                 prefix=args.prompt_prefix,
                 suffix=r"Complex: {input}\nSimple:",
                 example_separator=args.example_separator,
+                prompt_format=args.prompt_format,
             )
 
             outputs = llm.generate_from_model(inputs)
