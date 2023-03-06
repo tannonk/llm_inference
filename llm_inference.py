@@ -123,12 +123,12 @@ class InferenceArguments:
     )
 
     num_beams: int = field(
-        default=4,
+        default=1,
         metadata={"help": "Number of beams for beam search"}
     )
 
     do_sample: bool = field(
-        default=False,
+        default=True,
         metadata={"help": "Sample instead of greedy decoding"}
     )
 
@@ -143,7 +143,7 @@ class InferenceArguments:
     )
 
     top_p: float = field(
-        default=0.0,
+        default=0.9,
         metadata={"help": "Probability of top-p sampling"}
     )
 
@@ -188,7 +188,7 @@ class InferenceArguments:
 
     prompt_format: str = field(
         default="prefix_initial",
-        metadata={"help": "Format for generation prompt. See description in prompt_utils.py."}
+        metadata={"help": "Format for generation prompt. Either `prefix_initial` or `prefix_every`. See description in prompt_utils.py."}
     )
 
     few_shot_n: int = field(

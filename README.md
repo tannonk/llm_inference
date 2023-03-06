@@ -141,13 +141,14 @@ Below are some observations from running inference with LLMs:
 
 The following table is based off of generating with the following params (unless otherwise specified): `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9`
 
-| 		Model 		| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |  # GPUS  |
-| :---------------: | :---------------: | :-----------: | :-------------: | :---------------: | :------: |
-| bigscience/bloom-560m | 0.78GB        |        ?      | ~10 secs (bs=4) |         6GB       |  1 (T4)  |
-| bigscience/bloom-1b1  | 1.35GB        |        ?      | ~10 ses (bs=4)  |         8GB       |  1 (T4)  |
-| bigscience/bloom  | 	167.5 GB	    |    15 mins    | ~45 secs (bs=8) |          ?        | 4 (A100) |
-| facebook/opt-iml-max-30b |  28.26GB   |     5 mins    | ~10 secs (bs=8) |          ?        | 1 (A100) |
-| facebook/opt-66b      |    28.26GB    |     5 mins    | ~10 secs (bs=8) |          ?        | 1 (A100) |
+| 		Model 	     	| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |    # GPUS     |
+| :-------------------: | :---------------: | :-----------: | :-------------: | :---------------: | :-----------: |
+| bigscience/bloom-560m |     0.78GB        |        ?      | ~10 secs (bs=4) |        ~6GB       |  1 (T4/16GB)  |
+| bigscience/bloom-1b1  |     1.35GB        |        ?      | ~10 ses (bs=4)  |        ~8GB       |  1 (T4/16GB)  |
+| bigscience/bloom      | 	  167.5 GB	    |    15 mins    | ~45 secs (bs=8) |          ?        | 4 (A100/80GB) |
+| facebook/opt-30b      |     28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
+| facebook/opt-iml-max-30b |  28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
+| facebook/opt-66b      |     61.65GB       |     5 mins    | ~40 secs (bs=8) |       ~150GB      | 2 (A100/80GB) |
 
 
 ## Limitations
