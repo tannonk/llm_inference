@@ -16,15 +16,15 @@ import json
 import logging
 import hashlib
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List, Dict, Tuple, Optional, Union, Generator
 
 from llm_inference import InferenceArguments
 
 logger = logging.getLogger(__name__)
 
-def iter_text_lines(file):
+def iter_text_lines(file: Union[str, Path]) -> Generator[str, None, None]:
     """Generator that yields lines from a regular text file."""
-    with open(file, 'r') as f:
+    with open(file, 'r', encoding='utf8') as f:
         for line in f:
             line = line.strip()
             if len(line) == 0:
@@ -32,7 +32,7 @@ def iter_text_lines(file):
             else:
                 yield line
 
-def iter_json_lines(file: str):
+def iter_json_lines(file: Union[str, Path]) -> Generator[Dict, None, None]:
     """Fetch dictionary-object lines from a JSONL file"""
     with open(file, 'r') as f:
         for line in f:
@@ -42,20 +42,20 @@ def iter_json_lines(file: str):
             else:
                 yield json.loads(line)
 
-def iter_lines(file: str):
+def iter_lines(file: Union[str, Path]) -> Generator[Union[str, Dict], None, None]:
     """Wraps `iter_text_lines` and `iter_json_lines` to fetch lines from file"""
-    if file.endswith(".jsonl") or file.endswith(".json"):
+    if str(file).endswith(".jsonl") or str(file).endswith(".json"):
         return iter_json_lines(file)
     else:
         return iter_text_lines(file)
 
-def load_few_shot_prompts(fsp_file: str) -> List[str]:
+def load_few_shot_prompts(fsp_file: Union[str, Path]) -> List[str]:
     """Returns a list of few-shot prompts."""
     fsprompts = [l for l in iter_lines(fsp_file)]
     logger.info(f"Loaded {len(fsprompts)} few-shot prompts")
     return fsprompts
 
-def load_prompts(p_file: str) -> List[str]:
+def load_prompts(p_file: Union[str, Path]) -> List[str]:
     """Returns a list of prompts."""
     prompts = [l for l in iter_lines(p_file)]
     logger.info(f"Loaded {len(prompts)} prompts")
@@ -71,7 +71,7 @@ def merge_prompts(prompts: List[str], fsprompts: Optional[List[str]] = None) -> 
             raise RuntimeError("Number of few-shot prompts must be 1 or equal to number of prompts!")
         return [fsprompts[i] + prompts[i] for i in range(len(prompts))]
 
-def iter_json_batches(file: str, batch_size: int = 3):
+def iter_json_batches(file: str, batch_size: int = 3) -> Generator[List[Dict], None, None]:
     """Fetch batched lines from jsonl file"""
     current_batch = []
     c = 0
@@ -86,7 +86,7 @@ def iter_json_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
-def iter_text_batches(file: str, batch_size: int = 3):
+def iter_text_batches(file: Union[str, Path], batch_size: int = 3) -> Generator[List[str], None, None]:
     """Fetch batched lines from file"""
     current_batch = []
     c = 0
@@ -101,15 +101,15 @@ def iter_text_batches(file: str, batch_size: int = 3):
     if len(current_batch) > 0:
         yield current_batch # don't forget the last one!
 
-def iter_batches(file: str, batch_size: int = 3):
+def iter_batches(file: Union[str, Path], batch_size: int = 3) -> Generator[Union[List[str], List[Dict]], None, None]:
     """Wraps `iter_text_batches` and `iter_json_batches` to fetch batched lines from file"""
-    if file.endswith(".jsonl") or file.endswith(".json"):
+    if str(file).endswith(".jsonl") or str(file).endswith(".json"):
         return iter_json_batches(file, batch_size)
     else:
         return iter_text_batches(file, batch_size)
 
 
-def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
+def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
     """Given all inference arguments, generate output filename for consistency"""
     
     model_name = Path(args.model_name_or_path).name # 'bigscience/bloom-1b1 -> bloom-1b1
@@ -138,7 +138,7 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl"):
 
     return str(output_file)
 
-def persist_args(args: InferenceArguments):
+def persist_args(args: InferenceArguments) -> None:
     """Writes inference args to file for reference / experiment tracking.
     The file name is inferred from the name of the output_file."""
     
@@ -151,7 +151,7 @@ def persist_args(args: InferenceArguments):
 
     return
 
-def serialize_to_jsonl(inputs: List[str], outputs: List[str]):
+def serialize_to_jsonl(inputs: List[str], outputs: List[str]) -> Generator[str, None, None]:
     """Generator function to write each model output as a json object line by line"""
     for input_sequence, output_sequences in zip(inputs, outputs):
         yield json.dumps({"input_prompt": input_sequence, "model_output": r'\t'.join(output_sequences).strip()}, ensure_ascii=False)

@@ -8,6 +8,10 @@ slurm-*
 
 # datasets
 data/asset/
+data/hsplit/
+data/onestopenglish/
+data/turkcorpus/
+data/newsela-auto/
 data/outputs/
 prompts/
 logs/
