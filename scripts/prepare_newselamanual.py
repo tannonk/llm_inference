@@ -9,6 +9,7 @@ https://github.com/ZurichNLP/SimpleFUDGE/blob/master/ats_data/extract_aligned_se
 Modifier: Alison Chi
 """
 
+import os
 from typing import List
 from string import punctuation
 import re
@@ -148,6 +149,48 @@ def parse_newsela_data(infile, verbose=True, complex_level=0, simple_level=4, fi
     return objects
 
 
+def get_inp_ref_format(all_objs, num_refs=4):
+    inp_set = set()
+    formatted_objs = []
+    ob_dict = {}
+    for ob in all_objs:
+        ori_tup = (ob['complex'], ob['complex_level'])
+        if ori_tup not in inp_set:
+            inp_set.add(ori_tup)
+        ob_dict[ob['complex']] = {'complex_level': ob['complex_level'], 'simple_level': [], 'simple': []}
+    for ob in all_objs:
+        if (ob['complex'], ob['complex_level']) in inp_set:
+            ob_dict[ob['complex']]['simple_level'].append(ob['simple_level'])
+            ob_dict[ob['complex']]['simple'].append(ob['simple'])
+    for key, val in ob_dict.items():
+        # Sadly, EASSE only allows references that are consistent in length.
+        if not num_refs or len(val['simple']) == num_refs:
+            formatted_objs.append({'complex': key, 'simple': val['simple'],
+                                   'complex_level': val['complex_level'], 'simple_level': val['simple_level']})
+    return formatted_objs
+
+
+def verify_x_in_y(data_x, data_y):
+    y_set = set()
+    y_df = pd.read_csv(data_y, sep='\t', header=None, names=['label', 'sid', 'cid', 'ssent', 'csent'],
+                       quoting=csv.QUOTE_NONE)
+    y_df = y_df[y_df['label'] != 'notAligned']  # filter all not aligned sentences
+    x_df = pd.read_csv(data_x, sep='\t', header=None, names=['label', 'sid', 'cid', 'ssent', 'csent'],
+                       quoting=csv.QUOTE_NONE)
+    x_df = x_df[x_df['label'] != 'notAligned']
+    for i in range(len(y_df['ssent'])):
+        y_set.add((y_df['sid'].tolist()[i], y_df['cid'].tolist()[i],
+                   y_df['ssent'].tolist()[i], y_df['csent'].tolist()[i], y_df['label'].tolist()[i]))
+    num_x_not_in_y = 0
+    for i in range(len(x_df['ssent'])):
+        x_tup = (x_df['sid'].tolist()[i], x_df['cid'].tolist()[i],
+                 x_df['ssent'].tolist()[i], x_df['csent'].tolist()[i], x_df['label'].tolist()[i])
+        if x_tup not in y_set:
+            num_x_not_in_y += 1
+    return num_x_not_in_y
+
+
+
 if __name__ == '__main__':
     # For more efficient preprocessing
     exclude = set(punctuation)
@@ -155,18 +198,18 @@ if __name__ == '__main__':
     for c in specials:
         exclude.add(c)
 
-    crowd_testfile = 'data/newsela-auto/newsela-manual/crowdsourced/test.tsv'
     all_testfile = 'data/newsela-auto/newsela-manual/all/test.tsv'
-    files = {'crowdsourced_test': crowd_testfile, 'all_test': all_testfile}
-
+    all_valfile = 'data/newsela-auto/newsela-manual/all/dev.tsv'
+    files = {'all_test': all_testfile, 'all_val': all_valfile}
+    out_dir = 'data/newsela-auto'
     for k, file in files.items():
         outname = f'news_manual_{k}.jsonl'
         all_pairs = []
-        # looping over every level combination to create a single file
-        for complex_lev in range(4):
+        for complex_lev in range(1):  # only looking at source level 0
             for simp_lev in range(complex_lev+1, 5):
                 align_objs = parse_newsela_data(infile=file, simple_level=simp_lev, complex_level=complex_lev)
                 all_pairs.extend(align_objs)
-        with jsonlines.open(outname, 'w') as jsonl_writer:
-            for obj in all_pairs:
+        formatted_objects = get_inp_ref_format(all_objs=all_pairs, num_refs=4)
+        with jsonlines.open(os.path.join(out_dir, outname), 'w') as jsonl_writer:
+            for obj in formatted_objects:
                 jsonl_writer.write(obj)
