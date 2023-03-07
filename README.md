@@ -38,6 +38,13 @@ cd ../..
 # cd installs/promptsource
 # pip install -e .
 
+# for inference with LlaMa, install the relevant package from source
+git clone https://github.com/facebookresearch/llama.git installs/llama
+cd installs/llama
+pip install -r requirements.txt
+pip install -e .
+cd ../..
+
 # install other deps
 pip install -r requirements.txt
 
@@ -63,6 +70,8 @@ python -m scripts.prepare_asset
 ```
 
 ## Examples
+
+#### Hugging Face Models
 
 To run inference with LLMs available on HuggingFace, run `inference.py` passing the relevant arguments, e.g.:
 
@@ -90,6 +99,28 @@ where:
 - `--prompt_prefix` is a string prefix used by LangChain to construct the prompt.
 - NB I: by default, an additional JSON file will be generated which persists the inference parameters used for generation.
 - NB II: specify `--output_dir ''` to print your outputs to stdout (good for debugging/development purposes)
+
+
+#### LLaMA
+
+We can also use the same script to run inference with [LLaMA](https://github.com/facebookresearch/llama). If you have access to LLaMA, simply set the `--model_name_or_path` to the location of your local copy of the LLaMA weights and run the script with `torchrun`, e.g.:
+
+```bash
+python -m torch.distributed.run \
+	--nproc_per_node 1 inference.py \
+	--model_name_or_path <path-to-llama-model-7B> \
+	--max_new_tokens 100 \
+	--batch_size 8 \
+	--top_p 0.9 \
+	--examples "data/asset/dataset/asset.valid.jsonl" \
+	--input_file "data/asset/dataset/asset.test.head10.jsonl" \
+	--n_refs 1 \
+	--few_shot_n 3 \
+	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
+	--output_dir "data/outputs"
+```
+
+- NB: `--nproc_per_node` must equal the number of model shards (7B=1, 13B=2, 30B=4, 66B=8)
 
 #### For Slurm Users Only
 
@@ -143,12 +174,15 @@ The following table is based off of generating with the following params (unless
 
 | 		Model 	     	| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |    # GPUS     |
 | :-------------------: | :---------------: | :-----------: | :-------------: | :---------------: | :-----------: |
-| bigscience/bloom-560m |     0.78GB        |        ?      | ~10 secs (bs=4) |        ~6GB       |  1 (T4/16GB)  |
-| bigscience/bloom-1b1  |     1.35GB        |        ?      | ~10 ses (bs=4)  |        ~8GB       |  1 (T4/16GB)  |
+| bigscience/bloom-560m |     0.78GB        |    20 secs    | ~10 secs (bs=4) |        ~6GB       |  1 (T4/16GB)  |
+| bigscience/bloom-1b1  |     1.35GB        |     1 min     | ~10 ses (bs=4)  |        ~8GB       |  1 (T4/16GB)  |
 | bigscience/bloom      | 	  167.5 GB	    |    15 mins    | ~45 secs (bs=8) |          ?        | 4 (A100/80GB) |
 | facebook/opt-30b      |     28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
 | facebook/opt-iml-max-30b |  28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
 | facebook/opt-66b      |     61.65GB       |     5 mins    | ~40 secs (bs=8) |       ~150GB      | 2 (A100/80GB) |
+| :-------------------: | :---------------: | :-----------: | :-------------: | :---------------: | :-----------: |
+| facebook/llama-7B     |       12GB        |     <1 min    | ~6 secs (bs=8)  |       ~20GB       | 1 (A100/80GB) |
+
 
 
 ## Limitations

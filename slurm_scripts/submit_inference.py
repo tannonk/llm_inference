@@ -25,7 +25,8 @@ python -m slurm_scripts.submit_inference \
 
 
 import os, sys
-import argparse
+import json
+
 from dataclasses import dataclass, field
 
 from transformers import HfArgumentParser
@@ -126,7 +127,11 @@ if __name__ == "__main__":
             if 't4' in s_args.gres.lower():
                 SCRIPT = 'slurm_scripts/run_inference_on_t4.sh '
             elif 'a100' in s_args.gres.lower():
-                SCRIPT = 'slurm_scripts/run_inference_on_a100.sh '
+                if 'llama' in args.model_name_or_path.lower():
+                    SCRIPT = 'slurm_scripts/run_inference_on_a100_llama.sh '
+                else:
+                    SCRIPT = 'slurm_scripts/run_inference_on_a100.sh '
+
         else: # debug
             SCRIPT = 'slurm_scripts/run_dummy.sh '
 

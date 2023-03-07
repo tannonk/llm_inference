@@ -5,6 +5,7 @@
 # __Email__ = 'kew@cl.uzh.ch
 # __Date__ = '2023-03-03'
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -19,14 +20,32 @@ from utils import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_
 from prompt_utils import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs
 from llm_inference import InferenceArguments, LLM
 
+from model_utils import setup_model_parallel, load
+
 logger = logging.getLogger(__name__)
 
 def run_inference(args):
 
     # set random seed everywhere for reproducibility
     set_seed(args.seed)
-    
-    llm = LLM(args)
+
+    if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
+        logger.info("Loading LLaMA model")
+        local_rank, world_size = setup_model_parallel(args.seed)
+        if local_rank > 0:
+            sys.stdout = open(os.devnull, 'w')
+            
+        tokenizer_path = str(Path(args.model_name_or_path).parent / "tokenizer.model")
+        llm = load(
+            args.model_name_or_path, 
+            tokenizer_path, 
+            local_rank, 
+            world_size,
+            max_seq_len=512,
+            max_batch_size=args.batch_size
+            )
+    else:
+        llm = LLM(args)
     
     # Use stdout when output_file and output_dir is not specified (e.g. for debugging)
     if not args.output_file and not args.output_dir:
@@ -71,7 +90,17 @@ def run_inference(args):
                 prompt_format=args.prompt_format,
             )
 
-            outputs = llm.generate_from_model(inputs)
+            if "llama" in args.model_name_or_path.lower():
+                outputs = llm.generate(
+                    inputs, 
+                    max_gen_len=args.max_new_tokens, 
+                    temperature=args.temperature, 
+                    top_p=args.top_p
+                    )
+                # pack outputs into a list of lists to match expected format from HF models
+                outputs = [[o] for o in outputs]
+            else:
+                outputs = llm.generate_from_model(inputs)
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
 
