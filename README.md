@@ -159,7 +159,18 @@ Simple:
 
 This example corresponds to the T1 prompt described in [Feng et al., 2023](http://arxiv.org/abs/2302.11957).
 
-The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format. These can easily be used for inference by passing them with the `--prompt_json` argument.
+Prompts can be defined on-the-fly at inference time by passing the relevant arguments. To do this for the example prompt above, pass the following arguments:
+
+```bash
+--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
+--promt_suffix "Complex: {input}\nSimple:"
+--prompt_template "Complex: {complex}\nSimple: {simple}"
+--example_separator "\n\n"
+--prompt_format "prefix_initial"
+```
+
+However, for reproducibility, we recommend using pre-defined prompts. These contain these relevant fields and easily be used for inference by passing them with the `--prompt_json` argument.
+The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format.
 
 ## Observations
 

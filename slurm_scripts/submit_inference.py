@@ -23,7 +23,7 @@ python -m slurm_scripts.submit_inference \
     --model_name_or_path "bigscience/bloom-560m" \
     --examples "data/asset/dataset/valid.jsonl" \
     --input_file "data/asset/dataset/asset.test.orig" \
-    --prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
+    --prompt_json "p0.json"
 
 """
 
