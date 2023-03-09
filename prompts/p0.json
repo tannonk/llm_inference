@@ -1,0 +1,9 @@
+{
+    "prompt_prefix": "Rewrite the complex sentence with simple sentence(s). Keep the meaning same, but make it simpler.",
+    "prompt_suffix": "Complex: {input}\nSimple:",
+    "prompt_template": "Complex: {complex}\nSimple: {simple}",
+    "example_separator": "\n\n",
+    "prompt_format": "prefix_initial",
+    "source_field": "complex",
+    "target_field": "simple"
+}
