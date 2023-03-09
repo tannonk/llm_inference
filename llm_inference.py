@@ -171,19 +171,24 @@ class InferenceArguments:
         metadata={"help": "Output file for model generations"}
     )
 
-    source_key: str = field(
-        default="complex",
-        metadata={"help": "Key for source sentences in input file. Only used if input file is a JSONL file."}
+    prompt_json: str = field(
+        default=None,
+        metadata={"help": "JSON file containing pre-defined prompt fields and values."}
     )
 
-    # write_to_file: str = field(
-    #     default='auto',
-    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on generation parameters"}
-    # )
-
     prompt_prefix: str = field(
-        default=None,
+        default="This is a prompt:",
         metadata={"help": "Prefix for generation prompt. This is passed to LangChain."}
+    )
+
+    prompt_template: str = field(
+        default=r"Complex: {complex}\nSimple: {simple}",
+        metadata={"help": "Example for generation prompt. This is passed to LangChain."}
+    )
+    
+    prompt_suffix: str = field(
+        default=r"Complex: {input}\nSimple:",
+        metadata={"help": "Suffix for generation prompt. This is passed to LangChain."}
     )
 
     prompt_format: str = field(
@@ -191,14 +196,24 @@ class InferenceArguments:
         metadata={"help": "Format for generation prompt. Either `prefix_initial` or `prefix_every`. See description in prompt_utils.py."}
     )
 
-    few_shot_n: int = field(
-        default=0,
-        metadata={"help": "number of examples to use as few-shot in-context examples"}
-    )
-
     example_separator: str = field(
         default=r"\n\n",
         metadata={"help": "Delimiter for prompts and generated text"}
+    )
+    
+    source_field: str = field(
+        default="complex",
+        metadata={"help": "Field in input file containing source sentences"}
+    )
+
+    target_field: str = field(
+        default="simple",
+        metadata={"help": "Field in input file containing target sentences"}
+    )
+
+    few_shot_n: int = field(
+        default=0,
+        metadata={"help": "number of examples to use as few-shot in-context examples"}
     )
 
     n_refs: int = field(

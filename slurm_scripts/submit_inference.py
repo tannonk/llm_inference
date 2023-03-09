@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# __Author__ = 'Tannon Kew'
+# __Email__ = 'kew@cl.uzh.ch
+# __Date__ = '2023-03-09'
+
 """
 
 This is a wrapper to facilitate the execution of inference jobs on a slurm cluster
@@ -31,7 +35,7 @@ from dataclasses import dataclass, field
 
 from transformers import HfArgumentParser
 from llm_inference import InferenceArguments
-from utils import get_output_file_name
+from utils import get_output_file_name, parse_experiment_config
 
 
 @dataclass
@@ -51,43 +55,44 @@ class SubmitArguments:
 
     ntasks: int = field(
         default=1,
-        metadata={"help": ""}
+        metadata={"help": "SLURM ntasks"}
     )
 
     cpus_per_task: int = field(
         default=1,
-        metadata={"help": ""}
+        metadata={"help": "SLURM cpus-per-task"}
     )
     
     gres: str = field(
         default=None, #"gpu:A100:1",
-        metadata={"help": ""}
+        metadata={"help": "SLURM gres"}
     )
 
     mem: str = field(
-        default="300GB",
-        metadata={"help": ""}
+        default="100GB",
+        metadata={"help": "SLURM mem"}
     )
 
     time: str = field(
         default="04:00:00",
-        metadata={"help": ""}
+        metadata={"help": "SLURM time"}
     )
 
     log_file: str = field(
         default=None,
-        metadata={"help": ""}
+        metadata={"help": "SLURM log file path"}
     )
 
     experiment_config: str = field(
         default=None,
-        metadata={"help": ""}
+        metadata={"help": "experiment config file path"}
     )
 
-def parse_experiment_config(config_file):
-    with open(config_file, 'r') as f:
-        data = json.load(f)
-    return data
+    dry_run: bool = field(
+        default=False,
+        metadata={"help": "If set to True, submission command is printed to stdout but not executed"}
+    )
+
 
 if __name__ == "__main__":
     
@@ -134,13 +139,6 @@ if __name__ == "__main__":
 
         else: # debug
             SCRIPT = 'slurm_scripts/run_dummy.sh '
-
-    # infer output file for generations --> moved to inference.py
-    # if args.output_file is None:
-    #     m = Path(args.model_name_or_path).name
-    #     t = Path(args.input_file).name.replace('.', '_')        
-    #     output_file = f"data/outputs/{m}/{t}_{args.few_shot_n}_{args.n_refs}_{args.seed}.jsonl"
-    #     args.output_file = output_file
     
     SUFFIX = f'--model_name_or_path "{args.model_name_or_path}" ' \
                 f'--max_new_tokens {args.max_new_tokens} ' \
@@ -156,11 +154,18 @@ if __name__ == "__main__":
                 f'--input_file "{args.input_file}" ' \
                 f'--n_refs {args.n_refs} ' \
                 f'--few_shot_n {args.few_shot_n} ' \
+                f'--prompt_json" {args.prompt_json}" ' \
                 f'--prompt_prefix "{args.prompt_prefix}" ' \
+                f'--prompt_suffix "{args.prompt_suffix}" ' \
+                f'--prompt_format "{args.prompt_format}" ' \
+                f'--prompt_template "{args.prompt_template}" ' \
+                f'--source_field "{args.source_field}" ' \
+                f'--target_field "{args.target_field}" ' \
                 f'--output_dir "{args.output_dir}" '
 
     full_command = PREFIX + SCRIPT + SUFFIX
     print()
     print(full_command)
     print()
-    os.system(full_command)
+    if not s_args.dry_run:
+        os.system(full_command)

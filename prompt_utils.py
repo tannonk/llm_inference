@@ -6,6 +6,7 @@
 # __Date__ = '2023-03-03'
 
 import re
+import json
 import random
 import logging
 from typing import List, Dict, Iterable, Optional
@@ -16,14 +17,10 @@ from langchain.prompts.example_selector import LengthBasedExampleSelector
 from langchain.prompts.example_selector.base import BaseExampleSelector
 from langchain.prompts.example_selector.ngram_overlap import NGramOverlapExampleSelector
 
-from utils import iter_json_lines
+from utils import iter_lines, iter_batches, pretty_print_instance
+from llm_inference import InferenceArguments
 
 logger = logging.getLogger(__name__)
-
-simple_prompt = PromptTemplate(
-    input_variables=["complex", "simple"],
-    template=r"Complex: {complex}\nSimple: {simple}",
-)
 
 class RandomExampleSelector(BaseExampleSelector):
     
@@ -52,7 +49,7 @@ class RandomExampleSelector(BaseExampleSelector):
         src_key: str = "complex", 
         tgt_key: str = "simple", 
         n_refs: int = 1, 
-    ):
+    ) -> List[Dict]:
         """
         Handles multi-reference examples for few-shot prompting.
 
@@ -87,16 +84,24 @@ class RandomExampleSelector(BaseExampleSelector):
             flat_examples.append(flat_ex) 
         return flat_examples
 
+def construct_example_template(template: str, source_field: str, target_field: str) -> PromptTemplate:
+    """Initialises a PromptTemplate object for the examples in the few-shot prompt."""
+    prompt_template = PromptTemplate(
+        input_variables=[source_field, target_field], # e.g. 'complex' and 'simple'
+        template=template # e.g. r"Complex: {complex}\nSimple: {simple}",
+    )
+    return prompt_template
 
 def prepare_prompted_inputs(
     inputs: List[str],
     examples: Optional[List[Dict]] = None, 
     example_selector: Optional[BaseExampleSelector] = None,
-    prefix: str = "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
-    suffix: str = "Complex: {input}\nSimple:",
+    prefix: str = "Simplify the following sentence:",
+    suffix: str = r"Complex: {input}\nSimple:",
+    example_prompt: PromptTemplate = None,
     example_separator: str = r"\n\n",
     prompt_format: str = "prefix_initial",
-    ):
+    ) -> List[str]:
     """
     Constructs few-shot prompts for a batch of inputs.
 
@@ -105,7 +110,8 @@ def prepare_prompted_inputs(
         examples :: a list of dictionaries containing the examples to be used in the prompt
         example_selector :: an ExampleSelector object to select examples from the examples list
         prefix :: a string to be added to the beginning of the prompt
-        suffix :: a string to be added to the end of the prompt
+        suffix :: a string to be added to the end of the prompt. Should contain the input variable name.
+        example_prompt :: a PromptTemplate object specifying the format of the examples in the prompt.
         example_separator :: a string to be added between each example in the prompt
         prompt_format :: a string specifying the format of the prompt. 
             Options are prefix_initial or prefix_every:
@@ -123,26 +129,29 @@ def prepare_prompted_inputs(
             few_shot_prompt = FewShotPromptTemplate(
                 examples=None if example_selector is None else examples,
                 example_selector=example_selector, # use an ExampleSelector instead of examples.
-                example_prompt=simple_prompt, # examples format
+                example_prompt=example_prompt, # examples format
                 prefix=prefix,
                 suffix=suffix,
                 input_variables=["input"], # the variables that the overall prompt expects
                 example_separator=example_separator, # string used to join the prefix, examples, and suffix together
             )
-        elif prompt_format == "prefix_every":
+        elif prompt_format == "prefix_every": # warning: this is a hacky way to add the prefix to every example
             # If using prefix_every, the examples separator is expanded to include the prefix.
             few_shot_prompt = FewShotPromptTemplate(
                 examples=None if example_selector is None else examples,
                 example_selector=example_selector, # use an ExampleSelector instead of examples.
-                example_prompt=simple_prompt, # examples format
-                prefix=' ', # prefix is added to the example_separator instead
+                example_prompt=example_prompt, # examples format
+                prefix=prefix, # prefix is added to the example_separator instead
                 suffix=suffix,
                 input_variables=["input"], # the variables that the overall prompt expects
                 example_separator=example_separator + prefix + example_separator, # string used to join the prefix, examples, and suffix together
             )
         
-        # To avoid prompt-initial white-space characters, we strip the base example_separator from first example
-        prompted_inputs.append(few_shot_prompt.format(input=i).strip().lstrip(example_separator))
+        # fill in the prompt template with the input
+        fsp = few_shot_prompt.format(input=i)
+        # if using `--prompt_format=prefix_every`, the prefix prompt is repeated twice at the start, so we replace it with a single instance
+        fsp = fsp.replace(prefix+example_separator+prefix, prefix).strip()
+        prompted_inputs.append(fsp)
 
     return prompted_inputs
 
@@ -194,42 +203,103 @@ def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], examp
             trimmed_outputs[i].append(out_seq.strip())
     return trimmed_outputs  
 
-if __name__ == "__main__":
+def load_predefined_prompt(args: InferenceArguments) -> InferenceArguments:
+    """
+    Loads a predefined prompt from a JSON file when the `--prompt_json` argument is provided.
+    Relevant arguments are then updated to reflect the loaded prompt.
+    """
+    if args.prompt_json is not None:
+        with open(args.prompt_json, "r") as f:
+            prompt_args = json.load(f)
+        for k, v in prompt_args.items():
+            setattr(args, k, v)
+            logger.info(f"Overriding default value for {k} from {args.prompt_json}")
+    return args
 
-    # load_prompt("prompts/ss_p1.json") # doesn't allow for example selector (?)
+def test():
+    """Usage example for the prompt template and example selector classes."""
+    from transformers import HfArgumentParser
+    from llm_inference import InferenceArguments
 
-    dataset = "data/asset/dataset/asset.valid.jsonl"
-    few_shot_n = 3
-    n_refs = 2
-    random.seed(42)
+    hf_parser = HfArgumentParser((InferenceArguments))
+    args = hf_parser.parse_args_into_dataclasses()[0]
 
-    examples = list(iter_json_lines(dataset))
-    
+    examples = list(iter_lines(args.examples))[:10]
+
     example_selector = RandomExampleSelector(
             examples=examples, # the examples it has available to choose from.
-            few_shot_n=few_shot_n,
-            n_refs=n_refs,
+            few_shot_n=args.few_shot_n,
+            n_refs=args.n_refs,
         )
 
-    inputs = prepare_prompted_inputs(
-        inputs=['I am a complex sentence.'],
-        example_selector=example_selector,
-        prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
-        suffix=r"Complex: {input}\nSimple:",
-        example_separator=r"\n\n",
-        prompt_format="prefix_every",
-    )
+    args = load_predefined_prompt(args)
 
-    print(inputs)
+    example_prompt = construct_example_template(args.prompt_template, args.source_field, args.target_field)
+
+    input_batches = list(iter_batches(args.input_file, args.batch_size))[:2]
+    for input_batch in input_batches:
+        if isinstance(input_batch[0], dict):
+            input_batch = [i[args.source_field] for i in input_batch]
+        
+        inputs = prepare_prompted_inputs(
+            inputs=input_batch,
+            example_selector=example_selector,
+            prefix=args.prompt_prefix,
+            suffix=args.prompt_suffix,
+            example_prompt=example_prompt,
+            example_separator=args.example_separator,
+            prompt_format=args.prompt_format,
+        )
+
+        for i in inputs:
+            pretty_print_instance({"input_prompt": i})
+            print()
+
+if __name__ == "__main__":
+
+    test()
+
+    # dataset = "data/asset/dataset/asset.valid.jsonl"
+    # few_shot_n = 3
+    # n_refs = 2
+    # random.seed(42)
+
+    # examples = list(iter_lines(dataset))
+
+    # example_selector = RandomExampleSelector(
+    #         examples=examples, # the examples it has available to choose from.
+    #         few_shot_n=few_shot_n,
+    #         n_refs=n_refs,
+    #     )
+
+    # inputs = prepare_prompted_inputs(
+    #     inputs=['I am a complex sentence.'],
+    #     example_selector=example_selector,
+    #     prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+    #     suffix=r"Complex: {input}\nSimple:",
+    #     example_separator=r"\n\n",
+    #     prompt_format="prefix_every",
+    # )
+
+    # print(inputs)
 
 
-    inputs = prepare_prompted_inputs(
-        inputs=['I am a complex sentence.'],
-        example_selector=example_selector,
-        prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
-        suffix=r"Complex: {input}\nSimple:",
-        example_separator=r"\n\n",
-        prompt_format="prefix_initial",
-    )
+    # inputs = prepare_prompted_inputs(
+    #     inputs=['I am a complex sentence.'],
+    #     example_selector=example_selector,
+    #     prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+    #     suffix=r"Complex: {input}\nSimple:",
+    #     example_separator=r"\n\n",
+    #     prompt_format="prefix_initial",
+    # )
 
-    print(inputs)
+    # print(inputs)
+
+    # inputs = prepare_prompted_inputs(
+    #     inputs=['I am a complex sentence.'],
+    #     example_selector=example_selector,
+    #     prefix="I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler.",
+    #     suffix=r"Complex: {input}\nSimple:",
+    #     example_separator=r"\n\n",
+    #     prompt_format="prefix_initial",
+    # )
