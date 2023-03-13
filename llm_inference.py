@@ -228,25 +228,18 @@ class LLM(object):
         self.args = args
 
         if is_encoder_decoder:
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                self.args.model_name_or_path,
-                device_map=self.args.device_map,  # "auto",
-                load_in_8bit=self.args.load_in_8bit,
-                torch_dtype=torch.float16,
-                max_memory=self.set_max_memory(),
-                offload_state_dict=self.args.offload_state_dict,
-                offload_folder=self.args.offload_folder,
-            )
+            model_type = AutoModelForSeq2SeqLM
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.args.model_name_or_path,
-                device_map=self.args.device_map, # "auto",
-                load_in_8bit=self.args.load_in_8bit,
-                torch_dtype=torch.float16,
-                max_memory=self.set_max_memory(),
-                offload_state_dict=self.args.offload_state_dict,
-                offload_folder=self.args.offload_folder,
-                )
+            model_type = AutoModelForCausalLM
+        self.model = model_type.from_pretrained(
+            self.args.model_name_or_path,
+            device_map=self.args.device_map, # "auto",
+            load_in_8bit=self.args.load_in_8bit,
+            torch_dtype=torch.float16,
+            max_memory=self.set_max_memory(),
+            offload_state_dict=self.args.offload_state_dict,
+            offload_folder=self.args.offload_folder,
+            )
         end_time = time.time()
         logger.info(f"Loaded model {self.args.model_name_or_path} in {end_time - start_time:.4f} seconds")
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
