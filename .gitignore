@@ -7,6 +7,9 @@ slurm-*
 *.out
 .idea/
 
+# API secrets
+secrets.py
+
 # datasets
 data/asset/
 data/hsplit/
