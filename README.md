@@ -59,7 +59,7 @@ To get the relevant datasets for reproducing experiments, use the script `script
 This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
 
 ```bash
-bash scripts/fetch_data.sh
+bash scripts/fetch_datasets.sh
 ```
 
 Once you have downloaded the raw datasets, we can prepare them for inference using the relevant `prepare_*.py` script.
@@ -121,6 +121,28 @@ python -m torch.distributed.run \
 ```
 
 - NB: `--nproc_per_node` must equal the number of model shards (7B=1, 13B=2, 30B=4, 66B=8)
+
+
+#### Running Models behind APIs
+
+Currently, the script `inference_API_models.py` supports running OpenAI or Cohere models.
+You will have to modify the template of `secrets.py` such that `COHERE_API_KEY` and `OPENAI_API_KEY` are exposed to the library.
+
+Running models can be done, for example, with the following command:
+```bash
+python -m inference_API_models \
+	--model_name_or_path "openai-text-davinci-003" \
+	--max_new_tokens 50 \
+	--top_p 0.9 \
+	--input_file "data/asset/dataset/asset.test.jsonl" \
+	--examples "data/asset/dataset/asset.valid.jsonl" \
+	--n_refs 1 \
+	--few_shot_n 3 \
+	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
+	--output_dir "data/outputs"
+```
+
+
 
 #### For Slurm Users Only
 

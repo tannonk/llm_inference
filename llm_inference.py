@@ -55,7 +55,8 @@ class InferenceArguments:
     
     load_in_8bit: bool = field(
         default=True,
-        metadata={"help": "If set to True, model will be loaded with int8 quantization (see https://huggingface.co/blog/hf-bitsandbytes-integration)"}
+        metadata={"help": "If set to True, model will be loaded with int8 quantization "
+                          "(see https://huggingface.co/blog/hf-bitsandbytes-integration)"}
     )
 
     offload_state_dict: bool = field(
@@ -154,6 +155,23 @@ class InferenceArguments:
     )
 
     ###################
+    ## API parameters
+    ###################
+    frequency_penalty: float = field(
+        default=0.0,
+        metadata={"help": "Can be used to reduce repetitiveness of generated tokens. "
+                          "Values should be between 0.0 and 1.0. "
+                          "Similar to presence_penalty, but works on relative frequency."}
+    )
+
+    presence_penalty: float = field(
+        default=0.0,
+        metadata={"help": "Can be used to reduce repetitiveness of generated tokens. "
+                          "Values should be between 0.0 and 1.0. "
+                          "Similar to presence_penalty, but works on more immediate blocking."}
+    )
+
+    ###################
     ## data and prompts
     ###################
 
@@ -179,7 +197,8 @@ class InferenceArguments:
 
     # write_to_file: str = field(
     #     default='auto',
-    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on generation parameters"}
+    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on "
+    #                       "generation parameters"}
     # )
 
     prompt_prefix: str = field(
@@ -189,7 +208,8 @@ class InferenceArguments:
 
     prompt_format: str = field(
         default="prefix_initial",
-        metadata={"help": "Format for generation prompt. Either `prefix_initial` or `prefix_every`. See description in prompt_utils.py."}
+        metadata={"help": "Format for generation prompt. Either `prefix_initial` or `prefix_every`. "
+                          "See description in prompt_utils.py."}
     )
 
     few_shot_n: int = field(
@@ -203,7 +223,7 @@ class InferenceArguments:
     )
 
     n_refs: int = field(
-        default = 1,
+        default=1,
         metadata={"help": "Number of target reference examples to show for each few-shot demonstration."}
     )
 
@@ -251,11 +271,12 @@ class LLM(object):
         if self.args.max_memory and self.args.max_memory != 1.0 and n_gpus > 1:
             logger.info(f"Infering max memory...")
             t = torch.cuda.get_device_properties(0).total_memory / (1024*1024*1024)
-            # note, we user math.floor() as a consertative rounding method
+            # note, we use math.floor() as a conservative rounding method
             # to optimize the maximum batch size on multiple GPUs, we give the first GPU less memory
             # see max_memory at https://huggingface.co/docs/accelerate/main/en/usage_guides/big_modeling
             max_memory = {
-                i:(f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
+                i: (f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else
+                    f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
                 }
             max_memory['cpu'] = '400GiB' # may need to lower this depending on hardware
             
@@ -286,10 +307,11 @@ class LLM(object):
         end_time = time.time()
 
         # model_outputs has shape: [num_return_sequences, seq_len]
-        cur_batch_size = encoded_inputs['input_ids'].shape[0] # use the actual batch size instead of args.batch_size as these can differ
+        # use the actual batch size instead of args.batch_size as these can differ
+        cur_batch_size = encoded_inputs['input_ids'].shape[0]
         new_tokens = (model_outputs.shape[1] - encoded_inputs['input_ids'].shape[1]) * model_outputs.shape[0]
-        logger.info(f"Generated {(new_tokens)} new tokens " \
-                    f"in {end_time - start_time:.4f} seconds " \
+        logger.info(f"Generated {(new_tokens)} new tokens "
+                    f"in {end_time - start_time:.4f} seconds "
                     f"(current batch size: {cur_batch_size}).")
         
         model_outputs = self.tokenizer.batch_decode(model_outputs, skip_special_tokens=True)

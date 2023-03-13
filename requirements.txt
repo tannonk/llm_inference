@@ -8,3 +8,5 @@ torch==1.13.1
 sentencepiece==0.1.97
 pandas
 jsonlines
+cohere==3.10.0
+openai==0.27.2
