@@ -5,6 +5,7 @@ scratch/
 *.pyc
 slurm-*
 *.out
+.idea/
 
 # datasets
 data/asset/
