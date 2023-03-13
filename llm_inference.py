@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 import torch
 from transformers import (
     pipeline,
-    AutoModelForCausalLM, 
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     HfArgumentParser,
 )
@@ -219,22 +220,33 @@ class InferenceArguments:
 
 class LLM(object):
 
-    def __init__(self, args: InferenceArguments):
+    def __init__(self, args: InferenceArguments, is_encoder_decoder: bool = False):
         # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
         
         # set seed for reproducibility
         self.args = args
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.args.model_name_or_path, 
-            device_map=self.args.device_map, # "auto", 
-            load_in_8bit=self.args.load_in_8bit, 
-            torch_dtype=torch.float16, 
-            max_memory=self.set_max_memory(),
-            offload_state_dict=self.args.offload_state_dict,
-            offload_folder=self.args.offload_folder,
+        if is_encoder_decoder:
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.args.model_name_or_path,
+                device_map=self.args.device_map,  # "auto",
+                load_in_8bit=self.args.load_in_8bit,
+                torch_dtype=torch.float16,
+                max_memory=self.set_max_memory(),
+                offload_state_dict=self.args.offload_state_dict,
+                offload_folder=self.args.offload_folder,
             )
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.args.model_name_or_path,
+                device_map=self.args.device_map, # "auto",
+                load_in_8bit=self.args.load_in_8bit,
+                torch_dtype=torch.float16,
+                max_memory=self.set_max_memory(),
+                offload_state_dict=self.args.offload_state_dict,
+                offload_folder=self.args.offload_folder,
+                )
         end_time = time.time()
         logger.info(f"Loaded model {self.args.model_name_or_path} in {end_time - start_time:.4f} seconds")
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")

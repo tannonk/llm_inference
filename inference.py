@@ -44,6 +44,9 @@ def run_inference(args):
             max_seq_len=512,
             max_batch_size=args.batch_size
             )
+    # FIXME: Exception for encoder-decoder models is generic at the moment.
+    elif "t5" in args.model_name_or_path.lower():
+        llm = LLM(args, is_encoder_decoder=True)
     else:
         llm = LLM(args)
     
@@ -109,7 +112,7 @@ def run_inference(args):
                 c += 1
 
         end_time = time.time()
-        logger.info(f"Finised inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
+        logger.info(f"Finished inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
         logger.info(f"Wrote {c} outputs to {args.output_file}")
 
 if __name__ == '__main__':
