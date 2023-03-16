@@ -50,6 +50,12 @@ pip install -r requirements.txt
 
 # check the install and CUDA dependencies
 python -m bitsandbytes
+
+git clone git clone https://github.com/feralvam/easse.git installs/easse
+cd installs/easse
+pip install -e .
+cd ../..
+
 ```
 
 

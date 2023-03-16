@@ -159,10 +159,29 @@ def persist_args(args: InferenceArguments) -> None:
 
     return
 
-def serialize_to_jsonl(inputs: List[str], outputs: List[List[str]]) -> Generator[str, None, None]:
+def serialize_to_jsonl(
+    inputs: List[str], 
+    outputs: List[List[str]], 
+    source_texts: Optional[List[str]] = None,
+    reference_texts: Optional[List[str]] = None,
+    ) -> Generator[str, None, None]:
     """Generator function to write each model output as a json object line by line"""
-    for input_sequence, output_sequences in zip(inputs, outputs):
-        yield json.dumps({"input_prompt": input_sequence, "model_output": r'\t'.join(output_sequences).strip()}, ensure_ascii=False)
+    
+    if not source_texts:
+        source_texts = [None for _ in range(len(inputs))]
+    if not reference_texts:
+        reference_texts = [None for _ in range(len(inputs))]
+
+    for input_sequence, output_sequences, source, ref in zip(inputs, outputs, source_texts, reference_texts):
+        yield json.dumps(
+            {
+                "input_prompt": input_sequence, 
+                "model_output": r'\t'.join(output_sequences).strip(),
+                "source": source,
+                "references": ref,   
+            }, 
+            ensure_ascii=False
+            )
 
 def parse_experiment_config(config_file: str) -> Dict:
     with open(config_file, 'r') as f:

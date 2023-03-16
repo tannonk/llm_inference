@@ -81,14 +81,15 @@ def run_inference(args):
         start_time = time.time()
         c = 0 # counter for generated output sequences
 
-        for input_batch in tqdm(iter_batches(args.input_file, args.batch_size)):
+        for batch in tqdm(iter_batches(args.input_file, args.batch_size)):
             # input file can be a text file or a jsonl file, in the latter case 
             # we assume that the input sentence is in the key specified by args.source_field
-            if isinstance(input_batch[0], dict):
-                input_batch = [i[args.source_field] for i in input_batch]
+            if isinstance(batch[0], dict):
+                batch_inputs = [i[args.source_field] for i in batch]
+                batch_refs = [i[args.target_field] for i in batch]
             # construct prompted inputs for each example in the batch
             inputs = prepare_prompted_inputs(
-                inputs=input_batch,
+                inputs=batch_inputs,
                 example_selector=example_selector,
                 prefix=args.prompt_prefix,
                 suffix=args.prompt_suffix,
@@ -111,7 +112,7 @@ def run_inference(args):
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
 
-            for line in serialize_to_jsonl(inputs, outputs):
+            for line in serialize_to_jsonl(inputs, outputs, batch_inputs, batch_refs):
                 outf.write(f"{line}\n")
                 c += 1
 
