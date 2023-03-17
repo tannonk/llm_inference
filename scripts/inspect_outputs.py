@@ -12,7 +12,7 @@ Expects a JSONL input file with items containing input prompts and model outputs
 
 Example usage:
 
-    python -m scripts.view_outputs data/outputs/bloom-560m/turk-test_turk-tune_2_1_489.jsonl
+    python -m scripts.inspect_outputs data/outputs/bloom-560m/turk-test_turk-tune_2_1_489.jsonl
 
 """
 
@@ -20,7 +20,7 @@ import argparse
 import random
 from typing import Dict
 
-from utils import iter_lines, pretty_print_instance
+from utils.helpers import iter_lines, pretty_print_instance
 
 def get_args():
     parser = argparse.ArgumentParser()

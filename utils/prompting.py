@@ -17,7 +17,7 @@ from langchain.prompts.example_selector import LengthBasedExampleSelector
 from langchain.prompts.example_selector.base import BaseExampleSelector
 from langchain.prompts.example_selector.ngram_overlap import NGramOverlapExampleSelector
 
-from utils import iter_lines, iter_batches, pretty_print_instance
+from utils.helpers import iter_lines, iter_batches, pretty_print_instance
 from llm_inference import InferenceArguments
 
 logger = logging.getLogger(__name__)

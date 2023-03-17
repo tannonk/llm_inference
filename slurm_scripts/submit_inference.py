@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 
 from transformers import HfArgumentParser
 from llm_inference import InferenceArguments
-from utils import get_output_file_name, parse_experiment_config
+from utils.helpers import get_output_file_name, parse_experiment_config
 
 
 @dataclass

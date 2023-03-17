@@ -16,11 +16,11 @@ from typing import List, Dict, Tuple, Optional, Union
 from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
 
-from utils import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
-from prompt_utils import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
+from utils.helpers import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
+from utils.prompting import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
+from utils.model import setup_model_parallel, load
 from llm_inference import InferenceArguments, LLM
 
-from model_utils import setup_model_parallel, load
 
 logger = logging.getLogger(__name__)
 

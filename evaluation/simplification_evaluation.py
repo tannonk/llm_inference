@@ -36,7 +36,7 @@ from easse import sari, bleu, fkgl, bertscore, quality_estimation # samsa fails 
 
 from evaluation.distinct_n import distinct
 from evaluation.perplexity import score_ppl
-from utils import iter_lines
+from utils.helpers import iter_lines
 
 logger = logging.getLogger(__name__)
 

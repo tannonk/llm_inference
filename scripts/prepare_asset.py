@@ -32,7 +32,7 @@ Example call:
 
 import json
 from pathlib import Path
-from utils import *
+from utils.helpers import *
 
 data_dir = Path("data/asset/dataset")
 

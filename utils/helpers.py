@@ -8,7 +8,7 @@
 
 """
 
-Generic functions for file handling
+Generic helper functions for file handling
 
 """
 
