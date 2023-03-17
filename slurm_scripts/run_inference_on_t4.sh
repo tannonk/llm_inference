@@ -8,8 +8,9 @@
 
 set -x
 
-# defaults
-BASE='/data/tkew/projects/llm_ats'
+# hardcoded defaults
+script_path="$( cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
+BASE="$script_path/.."
 
 module purge
 module load anaconda3 gpu t4
@@ -21,19 +22,3 @@ conda activate llm_hf1 && echo "CONDA ENV: $CONDA_DEFAULT_ENV"
 cd "${BASE}" && echo $(pwd) || exit 1
 
 python inference.py "$@"
-
-# python inference.py \
-#     --model_name_or_path "bigscience/bloom" \
-#     --max_new_tokens 100 \
-#     --max_memory 0.65 \
-#     --batch_size 8 \
-#     --num_beams 1 \
-#     --num_return_sequences 1 \
-#     --do_sample True \
-#     --top_p 0.9 \
-#     --examples "data/asset/dataset/valid.jsonl" \
-#     --input_file "data/asset/dataset/asset.test.orig" \
-#     --n_refs 1 \
-#     --few_shot_n 3 \
-#     --prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-#     --output_file "data/outputs/bloom/asset.test"

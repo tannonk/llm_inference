@@ -7,8 +7,9 @@
 
 # set -x
 
-# defaults
-BASE='/data/tkew/projects/llm_ats'
+# hardcoded defaults
+script_path="$( cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
+BASE="$script_path/.."
 
 module purge
 module load anaconda3 multigpu a100
