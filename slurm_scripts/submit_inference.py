@@ -21,9 +21,13 @@ python -m slurm_scripts.submit_inference \
     --batch_size 8 \
     --seed 489 \
     --model_name_or_path "bigscience/bloom-560m" \
-    --examples "data/asset/dataset/valid.jsonl" \
-    --input_file "data/asset/dataset/asset.test.orig" \
+    --examples "data/asset/dataset/asset.valid.jsonl" \
+    --input_file "data/asset/dataset/asset.test.jsonl" \
     --prompt_json "p0.json"
+
+alternatively, you can pass a json file with all the arguments:
+
+python -m slurm_scripts.submit_inference exp_configs/bloom-560m-3-1.json
 
 """
 

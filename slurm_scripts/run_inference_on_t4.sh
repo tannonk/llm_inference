@@ -4,7 +4,8 @@
 #SBATCH --gres=gpu:T4:1
 #SBATCH --mem=200GB
 #SBATCH --time=02:00:00
-#SBATCH --output=/data/tkew/projects/llm_ats/logs/%j.out
+
+# __Author__: Tannon Kew (kew@cl.uzh.ch)
 
 set -x
 
