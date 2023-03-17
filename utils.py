@@ -12,9 +12,11 @@ Generic functions for file handling
 
 """
 
+import re
 import json
 import logging
 import hashlib
+import pprint
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Union, Generator
 
@@ -112,30 +114,32 @@ def iter_batches(file: Union[str, Path], batch_size: int = 3) -> Generator[Union
 def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
     """Given all inference arguments, generate output filename for consistency"""
     
-    model_name = Path(args.model_name_or_path).name # 'bigscience/bloom-1b1 -> bloom-1b1
+    model_name = re.sub("[\.\_]", "-", Path(args.model_name_or_path).name) # 'bigscience/bloom-1b1 -> bloom-1b1
     
-    test_set = Path(args.input_file).stem.replace('.', '-') # data/asset/dataset/asset.test.orig -> asset-test
+    test_set = re.sub("[\.\_]", "-", Path(args.input_file).stem) # data/asset/dataset/asset.test.orig -> asset-test
     
-    examples = Path(args.examples).stem.replace('.', '-') # data/asset/dataset/asset.valid -> asset-valid
+    examples = re.sub("[\.\_]", "-", Path(args.examples).stem) # data/asset/dataset/asset.valid -> asset-valid
     
-    prompt_hash = hashlib.sha1(args.prompt_prefix.encode("UTF-8")).hexdigest()[:8]
+    if args.prompt_json is not None:
+        prompt_id = re.sub("[\.\_]", "-", Path(args.prompt_json).stem) # prompts/ex1.json-> ex1
+    else: # generate an on-the-fly 'prompt id' based on the prompt prefix and format used
+        prompt_hash = f"{hashlib.sha1(args.prompt_prefix.encode('UTF-8')).hexdigest()[:8]}"
+        prompt_id = prompt_hash + '-' + re.sub("[\.\_]", "-", args.prompt_format)
 
     if examples == test_set: # this may be necessary to avoid if no validation set is available
         raise RuntimeError("Few-shot prompt examples should not be the same as the test instances!")
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
-                                                                f"{prompt_hash}_" \
-                                                                f"{args.prompt_format}_" \
+                                                                f"{prompt_id}_" \
                                                                 f"{args.few_shot_n}_" \
                                                                 f"{args.n_refs}_" \
                                                                 f"{args.seed}{ext}"
 
+    logger.info(f"Model outputs will be written to {output_file}")
     if Path(output_file).exists():
         logger.warning(f"Output file {output_file} already exists! Overwriting...")
-    else:
-        # create directory path if necessary
+    else: # create directory path if necessary
         Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Model outputs will be written to {output_file}")
 
     return str(output_file)
 
@@ -143,19 +147,60 @@ def persist_args(args: InferenceArguments) -> None:
     """Writes inference args to file for reference / experiment tracking.
     The file name is inferred from the name of the output_file."""
     
-    inference_args_file = Path(args.output_file).parent / f'{Path(args.output_file).stem}_args.json'
+    if args.output_file != "stdout":
+        inference_args_file = Path(args.output_file).parent / f'{Path(args.output_file).stem}_args.json'
     
-    with open(str(inference_args_file), "w", encoding ="utf8") as outf:
-        json.dump(args.__dict__, outf, ensure_ascii=False, indent=4)
+        with open(str(inference_args_file), "w", encoding ="utf8") as outf:
+            json.dump(args.__dict__, outf, ensure_ascii=False, indent=4)
 
-    logger.info(f"Inference args written to {inference_args_file}")
+        logger.info(f"Inference args written to {inference_args_file}")
+    
+    logger.info(f"Inference args = {args}")
 
     return
 
-def serialize_to_jsonl(inputs: List[str], outputs: List[List[str]]) -> Generator[str, None, None]:
+def serialize_to_jsonl(
+    inputs: List[str], 
+    outputs: List[List[str]], 
+    source_texts: Optional[List[str]] = None,
+    reference_texts: Optional[List[str]] = None,
+    ) -> Generator[str, None, None]:
     """Generator function to write each model output as a json object line by line"""
-    for input_sequence, output_sequences in zip(inputs, outputs):
-        yield json.dumps({"input_prompt": input_sequence, "model_output": r'\t'.join(output_sequences).strip()}, ensure_ascii=False)
+    
+    if not source_texts:
+        source_texts = [None for _ in range(len(inputs))]
+    if not reference_texts:
+        reference_texts = [None for _ in range(len(inputs))]
+
+    for input_sequence, output_sequences, source, ref in zip(inputs, outputs, source_texts, reference_texts):
+        yield json.dumps(
+            {
+                "input_prompt": input_sequence, 
+                "model_output": r'\t'.join(output_sequences).strip(),
+                "source": source,
+                "references": ref,   
+            }, 
+            ensure_ascii=False
+            )
+
+def parse_experiment_config(config_file: str) -> Dict:
+    with open(config_file, 'r') as f:
+        data = json.load(f)
+    return data
+
+def pretty_print_instance(example: Dict) -> None:
+    
+    input_str = re.sub(r'\\n\\n', '\n\n', example.get('input_prompt'))
+    input_str = re.sub(r'\\n', '\n', input_str)
+
+    print(f"Input:\n")
+    # pprint.pprint(input_str)
+    print(input_str)
+    print(f"\nOutput:\n")
+    # pprint.pprint(example.get('model_output'))
+    print(example.get('model_output'))
+    print("="*80)
+
 
 if __name__ == "__main__":
     pass

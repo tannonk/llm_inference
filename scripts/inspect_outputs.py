@@ -18,25 +18,15 @@ Example usage:
 
 import argparse
 import random
-import re
 from typing import Dict
 
-from utils import iter_lines
+from utils import iter_lines, pretty_print_instance
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('infile', type=str, help='Path to the file containing model generated outputs')
     parser.add_argument('--seed', default=None, help='Random seed')
     return parser.parse_args()
-
-def pretty_print_instance(example: Dict):
-    
-    input_str = re.sub(r'\\n\\n', '\n\n', example['input_prompt'])
-    input_str = re.sub(r'\\n', '\n', input_str)
-
-    print(f"Input: { input_str} ")
-    print(f"\t\t{example['model_output']}")
-    print()
 
 
 if __name__ == '__main__':

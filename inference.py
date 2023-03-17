@@ -17,7 +17,7 @@ from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
 
 from utils import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
-from prompt_utils import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs
+from prompt_utils import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
 from llm_inference import InferenceArguments, LLM
 
 from model_utils import setup_model_parallel, load
@@ -29,6 +29,7 @@ def run_inference(args):
     # set random seed everywhere for reproducibility
     set_seed(args.seed)
 
+    # load model
     if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
         logger.info("Loading LLaMA model")
         local_rank, world_size = setup_model_parallel(args.seed)
@@ -59,37 +60,44 @@ def run_inference(args):
     else:
         raise RuntimeError(f"Could not infer output file!")
     
-    if args.output_file != "stdout":
-        persist_args(args)
-    
+    # set up prompt
+    args = load_predefined_prompt(args)
     # prepare few-shot examples
     examples = list(iter_json_lines(args.examples))
     logger.info(f"Few-shot examples will be sampled from {len(examples)} items")
+    # initialise example selector object
     example_selector = RandomExampleSelector(
             examples=examples, # the examples it has available to choose from.
             few_shot_n=args.few_shot_n,
             n_refs=args.n_refs,
         )
-
+    # construct example prompt that is reused for all inputs (with different examples)
+    example_prompt = construct_example_template(args.prompt_template, args.source_field, args.target_field)
+    
+    # save all arguments to output file
+    persist_args(args)
+    
     with open(args.output_file, "w", encoding="utf8") if args.output_file != "stdout" else sys.stdout as outf:
         start_time = time.time()
         c = 0 # counter for generated output sequences
 
-        for input_batch in tqdm(iter_batches(args.input_file, args.batch_size)):
+        for batch in tqdm(iter_batches(args.input_file, args.batch_size)):
             # input file can be a text file or a jsonl file, in the latter case 
-            # we assume that the input sentence is in the key specified by args.source_key
-            if isinstance(input_batch[0], dict):
-                input_batch = [i[args.source_key] for i in input_batch]
-            
+            # we assume that the input sentence is in the key specified by args.source_field
+            if isinstance(batch[0], dict):
+                batch_inputs = [i[args.source_field] for i in batch]
+                batch_refs = [i[args.target_field] for i in batch]
+            # construct prompted inputs for each example in the batch
             inputs = prepare_prompted_inputs(
-                inputs=input_batch,
+                inputs=batch_inputs,
                 example_selector=example_selector,
                 prefix=args.prompt_prefix,
-                suffix=r"Complex: {input}\nSimple:",
+                suffix=args.prompt_suffix,
+                example_prompt=example_prompt,
                 example_separator=args.example_separator,
                 prompt_format=args.prompt_format,
             )
-
+            
             if "llama" in args.model_name_or_path.lower():
                 outputs = llm.generate(
                     inputs, 
@@ -104,7 +112,7 @@ def run_inference(args):
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
 
-            for line in serialize_to_jsonl(inputs, outputs):
+            for line in serialize_to_jsonl(inputs, outputs, batch_inputs, batch_refs):
                 outf.write(f"{line}\n")
                 c += 1
 
