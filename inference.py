@@ -68,11 +68,15 @@ def run_inference(args):
         c = 0 # counter for generated output sequences
 
         for batch in tqdm(iter_batches(args.input_file, args.batch_size)):
-            # input file can be a text file or a jsonl file, in the latter case 
-            # we assume that the input sentence is in the key specified by args.source_field
+            # input file can be a text file or a jsonl file
+            # if jsonl file, we expect that the input sentence is in the key specified by args.source_field
             if isinstance(batch[0], dict):
                 batch_inputs = [i[args.source_field] for i in batch]
                 batch_refs = [i[args.target_field] for i in batch]
+            else: # otherwise, we expect batch to be a list of strings
+                batch_inputs = batch
+                batch_refs = None
+
             # construct prompted inputs for each example in the batch
             inputs = prepare_prompted_inputs(
                 inputs=batch_inputs,
