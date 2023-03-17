@@ -2,7 +2,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:T4:1
-#SBATCH --mem=200GB
+#SBATCH --mem=100GB
 #SBATCH --time=02:00:00
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
