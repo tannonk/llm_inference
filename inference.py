@@ -18,8 +18,7 @@ from transformers import HfArgumentParser, set_seed
 
 from utils.helpers import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
 from utils.prompting import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
-from utils.model import setup_model_parallel, load
-from llm_inference import InferenceArguments, LLM
+from llm_inference import InferenceArguments, LLM, LLAMA
 
 
 logger = logging.getLogger(__name__)
@@ -31,20 +30,7 @@ def run_inference(args):
 
     # load model
     if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
-        logger.info("Loading LLaMA model")
-        local_rank, world_size = setup_model_parallel(args.seed)
-        if local_rank > 0:
-            sys.stdout = open(os.devnull, 'w')
-            
-        tokenizer_path = str(Path(args.model_name_or_path).parent / "tokenizer.model")
-        llm = load(
-            args.model_name_or_path, 
-            tokenizer_path, 
-            local_rank, 
-            world_size,
-            max_seq_len=512,
-            max_batch_size=args.batch_size
-            )
+        llm = LLAMA(args)
     else:
         llm = LLM(args)
     
@@ -98,17 +84,7 @@ def run_inference(args):
                 prompt_format=args.prompt_format,
             )
             
-            if "llama" in args.model_name_or_path.lower():
-                outputs = llm.generate(
-                    inputs, 
-                    max_gen_len=args.max_new_tokens, 
-                    temperature=args.temperature, 
-                    top_p=args.top_p
-                    )
-                # pack outputs into a list of lists to match expected format from HF models
-                outputs = [[o] for o in outputs]
-            else:
-                outputs = llm.generate_from_model(inputs)
+            outputs = llm.generate_from_model(inputs)
 
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
 
