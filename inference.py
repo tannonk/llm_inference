@@ -34,20 +34,6 @@ def run_inference(args):
     else:
         llm = LLM(args)
     
-    # Use stdout when output_file and output_dir is not specified (e.g. for debugging)
-    if not args.output_file and not args.output_dir:
-        args.output_file = "stdout"
-    elif args.output_file and not args.output_dir:
-        args.output_file = Path(args.output_file)
-        args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    elif not args.output_file and args.output_dir:
-        args.output_file = get_output_file_name(args)
-        Path(args.output_file).parent.mkdir(parents=True, exist_ok=True)
-    else:
-        raise RuntimeError(f"Could not infer output file!")
-    
-    # set up prompt
-    args = load_predefined_prompt(args)
     # prepare few-shot examples
     examples = list(iter_json_lines(args.examples))
     logger.info(f"Few-shot examples will be sampled from {len(examples)} items")
@@ -59,9 +45,6 @@ def run_inference(args):
         )
     # construct example prompt that is reused for all inputs (with different examples)
     example_prompt = construct_example_template(args.prompt_template, args.source_field, args.target_field)
-    
-    # save all arguments to output file
-    persist_args(args)
     
     with open(args.output_file, "w", encoding="utf8") if args.output_file != "stdout" else sys.stdout as outf:
         start_time = time.time()
@@ -103,4 +86,22 @@ def run_inference(args):
 if __name__ == '__main__':
     parser = HfArgumentParser((InferenceArguments))
     args = parser.parse_args_into_dataclasses()[0]
+    
+    # Use stdout when output_file and output_dir is not specified (e.g. for debugging)
+    if not args.output_file and not args.output_dir:
+        args.output_file = "stdout"
+    elif args.output_file and not args.output_dir:
+        args.output_file = Path(args.output_file)
+        args.output_file.parent.mkdir(parents=True, exist_ok=True)
+    elif not args.output_file and args.output_dir:
+        args.output_file = get_output_file_name(args)
+        Path(args.output_file).parent.mkdir(parents=True, exist_ok=True)
+    else:
+        raise RuntimeError(f"Could not infer output file!")
+    
+    # set up prompt
+    args = load_predefined_prompt(args)
+    # save all arguments to output file
+    persist_args(args)
+    
     run_inference(args)
