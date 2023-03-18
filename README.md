@@ -137,15 +137,13 @@ You will have to modify the template of `secrets.py` such that `COHERE_API_KEY` 
 Running models can be done, for example, with the following command:
 ```bash
 python -m inference_API_models \
-	--model_name_or_path "openai-text-davinci-003" \
-	--max_new_tokens 50 \
-	--top_p 0.9 \
-	--input_file "data/asset/dataset/asset.test.jsonl" \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
-	--n_refs 1 \
-	--few_shot_n 3 \
-	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-	--output_dir "data/outputs"
+--model_name_or_path cohere-command-xlarge-nightly \
+--input_file "data/examples/asset.test.h10.jsonl" \
+--examples "data/examples/asset.valid.h10.jsonl" \
+--n_refs 1 \
+--few_shot_n 3 \
+--output_dir "data/outputs" \
+--prompt_json "prompts/p0.json"
 ```
 
 
