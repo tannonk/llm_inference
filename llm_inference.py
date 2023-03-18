@@ -7,10 +7,11 @@
 
 import os
 import sys
-import argparse
 import math
 import time
+import json
 import logging
+from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, field
 
@@ -23,8 +24,12 @@ from transformers import (
     HfArgumentParser,
 )
 
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512mb"
+# the following imports are required for LLAMA
+import fire
+from fairscale.nn.model_parallel.initialize import initialize_model_parallel
+from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512mb"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -190,20 +195,24 @@ class InferenceArguments:
         metadata={"help": "Output file for model generations"}
     )
 
-    source_key: str = field(
-        default="complex",
-        metadata={"help": "Key for source sentences in input file. Only used if input file is a JSONL file."}
+    prompt_json: str = field(
+        default=None,
+        metadata={"help": "JSON file containing pre-defined prompt fields and values."}
     )
 
-    # write_to_file: str = field(
-    #     default='auto',
-    #     metadata={"help": "Output file for generated text or `auto` to generate outfile name based on "
-    #                       "generation parameters"}
-    # )
-
     prompt_prefix: str = field(
-        default=None,
+        default="This is a prompt:",
         metadata={"help": "Prefix for generation prompt. This is passed to LangChain."}
+    )
+
+    prompt_template: str = field(
+        default=r"Complex: {complex}\nSimple: {simple}",
+        metadata={"help": "Example for generation prompt. This is passed to LangChain."}
+    )
+    
+    prompt_suffix: str = field(
+        default=r"Complex: {input}\nSimple:",
+        metadata={"help": "Suffix for generation prompt. This is passed to LangChain."}
     )
 
     prompt_format: str = field(
@@ -212,14 +221,24 @@ class InferenceArguments:
                           "See description in prompt_utils.py."}
     )
 
-    few_shot_n: int = field(
-        default=0,
-        metadata={"help": "number of examples to use as few-shot in-context examples"}
-    )
-
     example_separator: str = field(
         default=r"\n\n",
         metadata={"help": "Delimiter for prompts and generated text"}
+    )
+    
+    source_field: str = field(
+        default="complex",
+        metadata={"help": "Field in input file containing source sentences"}
+    )
+
+    target_field: str = field(
+        default="simple",
+        metadata={"help": "Field in input file containing target sentences"}
+    )
+
+    few_shot_n: int = field(
+        default=0,
+        metadata={"help": "number of examples to use as few-shot in-context examples"}
     )
 
     n_refs: int = field(
@@ -266,7 +285,7 @@ class LLM(object):
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path, padding_side='left')
 
-    def set_max_memory(self):
+    def set_max_memory(self) -> Optional[Dict[int, str]]:
         n_gpus = torch.cuda.device_count()
         if self.args.max_memory and self.args.max_memory != 1.0 and n_gpus > 1:
             logger.info(f"Infering max memory...")
@@ -343,11 +362,99 @@ class LLM(object):
         return outputs
 
 
+class LLAMA(object):
+    """Wrapper class for LLaMA model. Provides the same interface as the above LLM class for HuggingFace models."""
+    def __init__(self, args: InferenceArguments) -> None:
+        #
+        # from utils.model import setup_model_parallel, load
+        
+        self.args = args
+
+        logger.info("Loading LLaMA model")
+        local_rank, world_size = self.setup_model_parallel(self.args.seed)
+        if local_rank > 0:
+            sys.stdout = open(os.devnull, 'w')
+
+        # tokenizer is expected to be in the parent directory of the model
+        tokenizer_path = str(Path(self.args.model_name_or_path).parent / "tokenizer.model")
+        
+        self.model = self.load(
+            self.args.model_name_or_path, 
+            tokenizer_path, 
+            local_rank, 
+            world_size,
+            max_seq_len=512,
+            max_batch_size=self.args.batch_size
+            )
+
+        return
+
+    def generate_from_model(self, inputs: List[str]) -> List[str]:
+
+        outputs = self.model.generate(
+            inputs, 
+            max_gen_len=self.args.max_new_tokens, 
+            temperature=self.args.temperature, 
+            top_p=self.args.top_p
+        )
+        # pack outputs into a list of lists to match expected format from HF models
+        return [[o] for o in outputs]
+
+    @staticmethod
+    def setup_model_parallel(seed: int) -> Tuple[int, int]:
+        local_rank = int(os.environ.get("LOCAL_RANK", -1))
+        world_size = int(os.environ.get("WORLD_SIZE", -1))
+
+        torch.distributed.init_process_group("nccl")
+        initialize_model_parallel(world_size)
+        torch.cuda.set_device(local_rank)
+
+        # seed must be the same in all processes
+        torch.manual_seed(seed)
+        return local_rank, world_size
+
+    @staticmethod
+    def load(
+        ckpt_dir: str,
+        tokenizer_path: str,
+        local_rank: int,
+        world_size: int,
+        max_seq_len: int,
+        max_batch_size: int,
+    ) -> LLaMA:
+        start_time = time.time()
+        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+        assert world_size == len(
+            checkpoints
+        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
+        ckpt_path = checkpoints[local_rank]
+        print("Loading")
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        with open(Path(ckpt_dir) / "params.json", "r") as f:
+            params = json.loads(f.read())
+
+        model_args: ModelArgs = ModelArgs(
+            max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params
+        )
+        tokenizer = Tokenizer(model_path=tokenizer_path)
+        model_args.vocab_size = tokenizer.n_words
+        torch.set_default_tensor_type(torch.cuda.HalfTensor)
+        model = Transformer(model_args)
+        torch.set_default_tensor_type(torch.FloatTensor)
+        model.load_state_dict(checkpoint, strict=False)
+
+        generator = LLaMA(model, tokenizer)
+        print(f"Loaded in {time.time() - start_time:.2f} seconds")
+        return generator
+
+
 if __name__ == "__main__":
     
     hf_parser = HfArgumentParser((InferenceArguments))
     args = hf_parser.parse_args_into_dataclasses()[0]
 
-    llm = LLM(args)
+    # llm = LLM(args)
+    # print(llm.generate_from_model(["This is an awesome prompt :)"]))
 
+    llm = LLAMA(args)
     print(llm.generate_from_model(["This is an awesome prompt :)"]))

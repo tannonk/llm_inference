@@ -22,9 +22,10 @@ Example call:
 
 import json
 from pathlib import Path
-from utils import *
 
 from sacremoses import MosesDetokenizer
+
+from utils.helpers import *
 
 data_dir = Path("data/turkcorpus/data/turkcorpus/GEM")
 detokize = True

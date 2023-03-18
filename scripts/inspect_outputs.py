@@ -12,31 +12,21 @@ Expects a JSONL input file with items containing input prompts and model outputs
 
 Example usage:
 
-    python -m scripts.view_outputs data/outputs/bloom-560m/turk-test_turk-tune_2_1_489.jsonl
+    python -m scripts.inspect_outputs data/outputs/bloom-560m/turk-test_turk-tune_2_1_489.jsonl
 
 """
 
 import argparse
 import random
-import re
 from typing import Dict
 
-from utils import iter_lines
+from utils.helpers import iter_lines, pretty_print_instance
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('infile', type=str, help='Path to the file containing model generated outputs')
     parser.add_argument('--seed', default=None, help='Random seed')
     return parser.parse_args()
-
-def pretty_print_instance(example: Dict):
-    
-    input_str = re.sub(r'\\n\\n', '\n\n', example['input_prompt'])
-    input_str = re.sub(r'\\n', '\n', input_str)
-
-    print(f"Input: { input_str} ")
-    print(f"\t\t{example['model_output']}")
-    print()
 
 
 if __name__ == '__main__':

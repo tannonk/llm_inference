@@ -50,6 +50,12 @@ pip install -r requirements.txt
 
 # check the install and CUDA dependencies
 python -m bitsandbytes
+
+git clone git clone https://github.com/feralvam/easse.git installs/easse
+cd installs/easse
+pip install -e .
+cd ../..
+
 ```
 
 
@@ -89,8 +95,8 @@ python -m inference \
 	--examples "data/asset/dataset/asset.valid.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
 	--output_dir "data/outputs" \
+	--prompt_json "prompts/p0.json"
 ```
 
 where:
@@ -116,8 +122,8 @@ python -m torch.distributed.run \
 	--input_file "data/asset/dataset/asset.test.head10.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-	--output_dir "data/outputs"
+	--output_dir "data/outputs" \
+	--prompt_json "prompts/p0.json"
 ```
 
 - NB: `--nproc_per_node` must equal the number of model shards (7B=1, 13B=2, 30B=4, 66B=8)
@@ -155,7 +161,7 @@ python -m slurm_scripts.submit_inference \
 	--input_file "data/asset/dataset/asset.test.jsonl" \
 	--examples "data/asset/dataset/asset.valid.jsonl" \
 	--output_dir "data/outputs" \
-	--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
+	--prompt_json "prompts/p0.json"
 ```
 
 This script will also write a job log file in the `--output_dir`.
@@ -175,14 +181,24 @@ Simple: 0: The Hubble Space Telescope spotted Fortuna in 1993.
 Complex: Order # 56 / CMLN of 20 October 1973 prescribed the coat of arms of the Republic of Mali.
 Simple: 0: In 1973, order #56/CMLN described the coat of arms for the Republic of Mali.
 
-Complex: In the 1950s Camus devoted his efforts to human rights.
-Simple: 0: In the 1950s Camus worked on human rights.
-
 Complex: One side of the armed conflicts is composed mainly of the Sudanese military and the Janjaweed, a Sudanese militia group recruited mostly from the Afro-Arab Abbala tribes of the northern Rizeigat region in Sudan.
 Simple:
 ```
 
-The example corresponds to the T1 prompt described in [Feng et al., 2023](http://arxiv.org/abs/2302.11957).
+This example corresponds to the T1 prompt described in [Feng et al., 2023](http://arxiv.org/abs/2302.11957).
+
+Prompts can be defined on-the-fly at inference time by passing the relevant arguments. To do this for the example prompt above, pass the following arguments:
+
+```bash
+--prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler."
+--promt_suffix "Complex: {input}\nSimple:"
+--prompt_template "Complex: {complex}\nSimple: {simple}"
+--example_separator "\n\n"
+--prompt_format "prefix_initial"
+```
+
+However, for reproducibility, we recommend using pre-defined prompts. These contain these relevant fields and easily be used for inference by passing them with the `--prompt_json` argument.
+The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format.
 
 ## Observations
 
@@ -202,7 +218,7 @@ The following table is based off of generating with the following params (unless
 | facebook/opt-30b      |     28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
 | facebook/opt-iml-max-30b |  28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
 | facebook/opt-66b      |     61.65GB       |     5 mins    | ~40 secs (bs=8) |       ~150GB      | 2 (A100/80GB) |
-| :-------------------: | :---------------: | :-----------: | :-------------: | :---------------: | :-----------: |
+|                       |                   |               |                 |                   |               |
 | facebook/llama-7B     |       12GB        |     <1 min    | ~6 secs (bs=8)  |       ~20GB       | 1 (A100/80GB) |
 
 
