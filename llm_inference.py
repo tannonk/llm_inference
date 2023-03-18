@@ -51,7 +51,12 @@ class InferenceArguments:
 
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
-    )    
+    )
+
+    use_encoder_decoder_model: bool = field(
+        default=False,
+        metadata={"help": "If set to True, will load a Encoder-Decoder Model instead of Decoder-only."}
+    )
 
     # checkpoint_dir: str = field(
     #     default=None,

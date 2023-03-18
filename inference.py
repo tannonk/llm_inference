@@ -32,7 +32,7 @@ def run_inference(args):
     if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
         llm = LLAMA(args)
     # FIXME: Exception for encoder-decoder models is generic at the moment.
-    elif "t5" in args.model_name_or_path.lower():
+    elif args.use_encoder_decoder_model:
         llm = LLM(args, is_encoder_decoder=True)
     else:
         llm = LLM(args)
