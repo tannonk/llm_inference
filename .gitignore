@@ -6,6 +6,7 @@ scratch/
 slurm-*
 *.out
 .idea/
+
 secrets.py
 
 # datasets
