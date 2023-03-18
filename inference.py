@@ -30,20 +30,7 @@ def run_inference(args):
 
     # load model
     if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
-        logger.info("Loading LLaMA model")
-        local_rank, world_size = setup_model_parallel(args.seed)
-        if local_rank > 0:
-            sys.stdout = open(os.devnull, 'w')
-            
-        tokenizer_path = str(Path(args.model_name_or_path).parent / "tokenizer.model")
-        llm = load(
-            args.model_name_or_path, 
-            tokenizer_path, 
-            local_rank, 
-            world_size,
-            max_seq_len=512,
-            max_batch_size=args.batch_size
-            )
+        llm = LLAMA(args)
     # FIXME: Exception for encoder-decoder models is generic at the moment.
     elif "t5" in args.model_name_or_path.lower():
         llm = LLM(args, is_encoder_decoder=True)
