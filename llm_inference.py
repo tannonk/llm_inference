@@ -264,14 +264,14 @@ class InferenceArguments:
 
 class LLM(object):
 
-    def __init__(self, args: InferenceArguments, is_encoder_decoder: bool = False):
+    def __init__(self, args: InferenceArguments):
         # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
         
         # set seed for reproducibility
         self.args = args
 
-        if is_encoder_decoder:
+        if args.is_encoder_decoder:
             model_type = AutoModelForSeq2SeqLM
         else:
             model_type = AutoModelForCausalLM
