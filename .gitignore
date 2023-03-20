@@ -5,6 +5,10 @@ scratch/
 *.pyc
 slurm-*
 *.out
+.idea/
+
+# API secrets
+api_secrets.py
 
 # datasets
 data/asset/
