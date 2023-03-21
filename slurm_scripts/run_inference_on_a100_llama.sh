@@ -6,6 +6,7 @@
 #SBATCH --time=02:00:00
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
+# This is deprecated since migrating to HF implementation of LLAMA (https://huggingface.co/docs/transformers/main/model_doc/llama#llama)
 
 set -x
 

@@ -29,10 +29,10 @@ def run_inference(args):
     set_seed(args.seed)
 
     # load model
-    if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
-        llm = LLAMA(args)
-    else:
-        llm = LLM(args)
+    # if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
+    #     llm = LLAMA(args)
+    # else:
+    llm = LLM(args)
     
     # prepare few-shot examples
     examples = list(iter_json_lines(args.examples))

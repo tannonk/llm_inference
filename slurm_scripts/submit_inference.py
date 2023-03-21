@@ -98,6 +98,10 @@ class SubmitArguments:
         metadata={"help": "If set to True, submission command is executed on dummy script"}
     )
 
+# @dataclass
+# class ExperimentArguments:
+
+
 def slurm_is_available():
     out = subprocess.run(["sinfo"], capture_output=True, shell=True)
     return out.returncode == 0
@@ -139,8 +143,8 @@ if __name__ == "__main__":
     if s_args.debug:
         SCRIPT = 'slurm_scripts/run_dummy.sh '
     
-    if 'llama' in args.model_name_or_path.lower():
-        SCRIPT = 'slurm_scripts/run_inference_on_a100_llama.sh '
+    # if 'llama' in args.model_name_or_path.lower():
+    #     SCRIPT = 'slurm_scripts/run_inference_on_a100_llama.sh '
     
     if 'a100' in s_args.gres.lower():
         SCRIPT = 'slurm_scripts/run_inference_on_a100.sh '

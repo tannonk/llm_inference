@@ -20,6 +20,7 @@ from transformers import (
     pipeline,
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
+    LlamaForCausalLM,
     AutoTokenizer,
     HfArgumentParser,
 )
@@ -270,11 +271,14 @@ class LLM(object):
         
         # set seed for reproducibility
         self.args = args
-
+        
         if args.is_encoder_decoder:
             model_type = AutoModelForSeq2SeqLM
+        elif "llama" in args.model_name_or_path.lower():
+            model_type = LlamaForCausalLM
         else:
             model_type = AutoModelForCausalLM
+
         self.model = model_type.from_pretrained(
             self.args.model_name_or_path,
             device_map=self.args.device_map, # "auto",
@@ -289,6 +293,12 @@ class LLM(object):
         logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path, padding_side='left')
+
+        # LLAMA models don't have a pad token, so add one and resize the embeddings to match
+        if self.tokenizer.pad_token_id is None: 
+            self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            self.model.resize_token_embeddings(len(self.tokenizer))
+            # self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.decode([self.model.config.pad_token_id])})
 
     def set_max_memory(self) -> Optional[Dict[int, str]]:
         n_gpus = torch.cuda.device_count()
