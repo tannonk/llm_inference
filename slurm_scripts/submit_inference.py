@@ -69,12 +69,12 @@ class SubmitArguments:
     )
     
     gres: str = field(
-        default="", #"gpu:A100:1",
+        default="gpu:T4:1", #"gpu:A100:1",
         metadata={"help": "SLURM gres"}
     )
 
     mem: str = field(
-        default="100GB",
+        default="60GB",
         metadata={"help": "SLURM mem"}
     )
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                 f'--time={s_args.time} '
         
         # infer log file path
-        if s_args.log_file is None:
+        if not s_args.log_file:
             s_args.log_file = get_output_file_name(args, ext=".log")
             # m = Path(args.model_name_or_path).name
             # t = Path(args.input_file).name.replace('.', '-')        
