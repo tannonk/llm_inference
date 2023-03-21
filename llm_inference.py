@@ -51,6 +51,7 @@ class InferenceArguments:
     ################
 
     model_name_or_path: str = field(
+        default="",
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
 

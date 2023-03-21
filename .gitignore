@@ -17,5 +17,11 @@ data/onestopenglish/
 data/turkcorpus/
 data/newsela-auto/
 data/outputs/
+
+# model dir
+models/
+models
+
+# experiments
 logs/
 scratch/

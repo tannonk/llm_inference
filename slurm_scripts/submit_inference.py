@@ -111,9 +111,21 @@ if __name__ == "__main__":
     hf_parser = HfArgumentParser((InferenceArguments, SubmitArguments))
 
     if sys.argv[1].endswith(".json"):
-        # If we pass only one argument to the script and it's the path to a json file,
+        # If we pass only a json file as the first argument,
         # we parse it to get our arguments.
-        args, s_args = hf_parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))        
+        args, s_args = hf_parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        # We also parse the remaining arguments that may be specified, orverriding the ones in the json file.
+        remaining_args = sys.argv[2:]
+        for i in range(0, len(remaining_args), 2):
+            key = remaining_args[i].lstrip('-').replace('-', '_')
+            value = remaining_args[i+1]
+            if key in args.__dict__:
+                args.__dict__[key] = value
+            elif key in s_args.__dict__:
+                s_args.__dict__[key] = value
+            else:
+                raise ValueError(f"Unrecognized argument: {key}")
+
     else:
         args, s_args = hf_parser.parse_args_into_dataclasses()
 

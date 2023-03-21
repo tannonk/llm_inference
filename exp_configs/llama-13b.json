@@ -1,0 +1,12 @@
+{
+    "use_slurm": true,
+    "ntasks": 1,
+    "cpus_per_task": 1,
+    "gres": "gpu:T4:2",
+    "mem": "40GB",
+    "time": "01:00:00",
+    "model_name_or_path": "models/LLAMA/llama-13b",
+    "max_new_tokens": 100,
+    "max_memory": 1.0,
+    "batch_size": 8
+}
