@@ -107,7 +107,7 @@ where:
 - NB II: specify `--output_dir ''` to print your outputs to stdout (good for debugging/development purposes)
 
 
-#### LLaMA
+<!-- #### LLaMA
 
 We can also use the same script to run inference with [LLaMA](https://github.com/facebookresearch/llama). If you have access to LLaMA, simply set the `--model_name_or_path` to the location of your local copy of the LLaMA weights and run the script with `torchrun`, e.g.:
 
@@ -126,7 +126,7 @@ python -m torch.distributed.run \
 	--prompt_json "prompts/p0.json"
 ```
 
-- NB: `--nproc_per_node` must equal the number of model shards (7B=1, 13B=2, 30B=4, 66B=8)
+- NB: `--nproc_per_node` must equal the number of model shards (7B=1, 13B=2, 30B=4, 66B=8) -->
 
 
 #### Running Models behind APIs
