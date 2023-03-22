@@ -24,15 +24,16 @@ python -m run \
     --model_name_or_path bigscience/bloom-560m \
     --examples data/asset/dataset/asset.valid.jsonl \
     --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --prompt_json prompts/p0.json
 
 Alternatively, you can pass a json file in position 1 with some or all of the arguments:
 
-python -m run exp_configs/bloom-560m-3-1.json \
+python -m run exp_configs/bloom-560m.json \
     --seed 489 \
     --examples data/asset/dataset/asset.valid.jsonl \
     --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --prompt_json prompts/p0.json \
+    --n_refs 1 --few_shot_n 3
 
 This script will produce the following files:
 
@@ -192,7 +193,7 @@ if __name__ == "__main__":
                 avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
 
-            suffix = f' > {log_file} &'
+            suffix = f' >| {log_file} &'
         
         else:
 
@@ -283,7 +284,7 @@ if __name__ == "__main__":
             else:
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
 
-            suffix = f' > {log_file} &'
+            suffix = f' >| {log_file} &'
 
         else: # will submit a slurm job
 
