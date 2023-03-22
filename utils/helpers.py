@@ -135,10 +135,10 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
                                                                 f"nr{args.n_refs}_" \
                                                                 f"s{args.seed}{ext}"
 
-    # logger.info(f"Model outputs will be written to {output_file}")
     if Path(output_file).exists():
         logger.warning(f"Output file {output_file} already exists! Overwriting...")
     else: # create directory path if necessary
+        logger.info(f"Output file {output_file} created.")
         Path(output_file).parent.mkdir(parents=True, exist_ok=True)
 
     return str(output_file)

@@ -7,11 +7,12 @@
 
 """
 
-This is a wrapper to facilitate the execution of inference jobs on a slurm cluster
+This is a wrapper to facilitate the execution of experiments 
+either on a slurm cluster or directly on a local machine.
 
 Example Call:
 
-python -m slurm_scripts.submit_inference \
+python -m run \
     --use_slurm True \
     --ntasks 1 \
     --cpus_per_task 1 \
@@ -20,14 +21,18 @@ python -m slurm_scripts.submit_inference \
     --time 00:30:00 \
     --batch_size 8 \
     --seed 489 \
-    --model_name_or_path "bigscience/bloom-560m" \
-    --examples "data/asset/dataset/asset.valid.jsonl" \
-    --input_file "data/asset/dataset/asset.test.jsonl" \
-    --prompt_json "p0.json"
+    --model_name_or_path bigscience/bloom-560m \
+    --examples data/asset/dataset/asset.valid.jsonl \
+    --input_file data/asset/dataset/asset.test.jsonl \
+    --prompt_json p0.json
 
-alternatively, you can pass a json file with all the arguments:
+Alternatively, you can pass a json file in position 1 with some or all of the arguments:
 
-python -m slurm_scripts.submit_inference exp_configs/bloom-560m-3-1.json
+python -m run exp_configs/bloom-560m-3-1.json \
+    --seed 489 \
+    --examples data/asset/dataset/asset.valid.jsonl \
+    --input_file data/asset/dataset/asset.test.jsonl \
+    --prompt_json p0.json
 
 """
 
@@ -89,11 +94,6 @@ class SubmitArguments:
         metadata={"help": "GPU type"}
     )
 
-    # gres: str = field(
-    #     default="", #"gpu:A100:1",
-    #     metadata={"help": "SLURM gres"}
-    # )
-
     log_file: str = field(
         default="",
         metadata={"help": "SLURM log file path"}
@@ -151,31 +151,31 @@ if __name__ == "__main__":
     if sys.argv[1].endswith(".json"):
         # If we pass only a json file as the first argument,
         # we parse it to get our arguments.
-        args, s_args = hf_parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        i_args, s_args = hf_parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
         # We also parse the remaining arguments that may be specified, orverriding the ones in the json file.
         remaining_args = sys.argv[2:]
         for i in range(0, len(remaining_args), 2):
             key = remaining_args[i].lstrip('-').replace('-', '_')
             value = remaining_args[i+1]
-            if key in args.__dict__:
-                args.__dict__[key] = value
+            if key in i_args.__dict__:
+                i_args.__dict__[key] = value
             elif key in s_args.__dict__:
                 s_args.__dict__[key] = value
             else:
                 raise ValueError(f"Unrecognized argument: {key}")
 
     else:
-        args, s_args = hf_parser.parse_args_into_dataclasses()
+        i_args, s_args = hf_parser.parse_args_into_dataclasses()
 
-    output_file = get_output_file_name(args, ext=".jsonl")
-    log_file = get_output_file_name(args, ext=".log") if not s_args.log_file else s_args.log_file
+    output_file = get_output_file_name(i_args, ext=".jsonl")
+    log_file = get_output_file_name(i_args, ext=".log") if not s_args.log_file else s_args.log_file
 
     # Inference
     if s_args.do_inference:
         # Check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
-            prefix = 'bash '
+            prefix = 'nohup bash '
 
             # Set GPU resources
             avail_gpus = get_free_gpu_indices()
@@ -184,7 +184,9 @@ if __name__ == "__main__":
             else:
                 avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
-                
+
+            suffix = f' > {log_file} &'
+        
         else:
 
             prefix = f'sbatch ' \
@@ -202,8 +204,7 @@ if __name__ == "__main__":
                     gres = f'gpu:{s_args.n_gpus}'            
                 prefix += f'--gres={gres} '
             
-            # if s_args.gres:
-            #     prefix += f'--gres={s_args.gres} '
+            suffix = ''
 
         # Set default script on small GPU
         if s_args.debug:
@@ -214,45 +215,44 @@ if __name__ == "__main__":
             script = 'slurm_scripts/run_inference_on_t4.sh '
 
     
-        suffix = f'--model_name_or_path "{args.model_name_or_path}" ' \
-                    f'--max_new_tokens {args.max_new_tokens} ' \
-                    f'--max_memory {args.max_memory} ' \
-                    f'--batch_size {args.batch_size} ' \
-                    f'--num_beams {args.num_beams} ' \
-                    f'--num_return_sequences {args.num_return_sequences} ' \
-                    f'--seed {args.seed} ' \
-                    f'--do_sample {args.do_sample} ' \
-                    f'--top_p {args.top_p} ' \
-                    f'--temperature {args.temperature} ' \
-                    f'--examples "{args.examples}" ' \
-                    f'--input_file "{args.input_file}" ' \
-                    f'--n_refs {args.n_refs} ' \
-                    f'--few_shot_n {args.few_shot_n} ' \
-                    f'--prompt_json "{args.prompt_json}" ' \
-                    f'--prompt_prefix "{args.prompt_prefix}" ' \
-                    f'--prompt_suffix "{args.prompt_suffix}" ' \
-                    f'--prompt_format "{args.prompt_format}" ' \
-                    f'--prompt_template "{args.prompt_template}" ' \
-                    f'--source_field "{args.source_field}" ' \
-                    f'--target_field "{args.target_field}" ' \
-                    f'--output_dir "{args.output_dir}" ' \
-                    f'--output_file "{output_file}" '
+        args = f'--model_name_or_path "{i_args.model_name_or_path}" ' \
+                    f'--max_new_tokens {i_args.max_new_tokens} ' \
+                    f'--max_memory {i_args.max_memory} ' \
+                    f'--batch_size {i_args.batch_size} ' \
+                    f'--num_beams {i_args.num_beams} ' \
+                    f'--num_return_sequences {i_args.num_return_sequences} ' \
+                    f'--seed {i_args.seed} ' \
+                    f'--do_sample {i_args.do_sample} ' \
+                    f'--top_p {i_args.top_p} ' \
+                    f'--temperature {i_args.temperature} ' \
+                    f'--examples "{i_args.examples}" ' \
+                    f'--input_file "{i_args.input_file}" ' \
+                    f'--n_refs {i_args.n_refs} ' \
+                    f'--few_shot_n {i_args.few_shot_n} ' \
+                    f'--prompt_json "{i_args.prompt_json}" ' \
+                    f'--prompt_prefix "{i_args.prompt_prefix}" ' \
+                    f'--prompt_suffix "{i_args.prompt_suffix}" ' \
+                    f'--prompt_format "{i_args.prompt_format}" ' \
+                    f'--prompt_template "{i_args.prompt_template}" ' \
+                    f'--source_field "{i_args.source_field}" ' \
+                    f'--target_field "{i_args.target_field}" ' \
+                    f'--output_dir "{i_args.output_dir}" ' \
+                    f'--output_file "{output_file}"'
 
-        inference_command = prefix + script + suffix
+        inference_command = prefix + script + args + suffix
         
         print()
         print(inference_command)
         print()
         
-        # os.system(inference_command)
-        # result = subprocess.run(inference_command, shell=True)
-        # result1 = subprocess.run(['srun' 'echo', 'hello 1'], capture_output=True, text=True, shell=False)
         result1 = subprocess.run(inference_command, capture_output=True, text=True, shell=True)
-        # result1 = subprocess.call(inference_command, shell=True)
-        # Check the status of job A and get the job ID
+        # Check the status of job A and get the job ID from slurm
         if result1.returncode == 0:
-            job_id1 = result1.stdout.strip().split()[-1]
-            print(f"Running inference with job id: {job_id1}")
+            try:
+                job_id1 = result1.stdout.strip().split()[-1]
+                print(f"Inference job id: {job_id1}")
+            except IndexError:
+                pass
         else:
             print(result1.stderr)
             raise ValueError(f"Inference job submission failed")    
@@ -261,12 +261,12 @@ if __name__ == "__main__":
     if s_args.do_evaluation: 
         
         # infer log file path
-        log_file = get_output_file_name(args, ext=".res") if not s_args.log_file else s_args.log_file
+        log_file = get_output_file_name(i_args, ext=".res") if not s_args.log_file else s_args.log_file
 
         # check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
-            prefix = 'bash ' # will execute the directly
+            prefix = 'nohup bash ' # will execute the directly
 
             # Set GPU resources
             avail_gpus = get_free_gpu_indices()
@@ -276,6 +276,8 @@ if __name__ == "__main__":
             else:
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
 
+            suffix = f' > {log_file} &'
+
         else: # will submit a slurm job
 
             prefix = f'sbatch '        
@@ -284,27 +286,35 @@ if __name__ == "__main__":
                 prefix += f'--dependency=afterok:{job_id1} '
 
             prefix += f'--output="{log_file}" '
-        
+
+            suffix = ''
+
         if s_args.debug:
             script = 'slurm_scripts/run_dummy.sh '
         else:
             script = 'slurm_scripts/run_evaluation.sh '
 
-        evaluate_command = prefix + script + f'"{output_file}"'
+        evaluate_command = prefix + script + f'"{output_file}"' + suffix
         
         print()
         print(evaluate_command)
         print()
         
         result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True)
-        # result2 = subprocess.call(evaluate_command, capture_output=True, text=True, shell=True)
-            
-        if result2.returncode == 0:
-            job_id2 = result2.stdout.strip().split()[-1]
-            print(f"Running evaluation with job id: {job_id2}")
-        else: # Also cancel job A
-            subprocess.run(['scancel', job_id1])
-            print(result2.stderr)
-            raise ValueError(f"Evaluation job submission failed. All jobs cancelled.")
         
+        if result2.returncode == 0:
+            try:
+                job_id2 = result2.stdout.strip().split()[-1]
+                print(f"Evaluation job id: {job_id2}")
+            except IndexError:
+                pass
+        
+        else: 
+            # Abort inference job
+            try:
+                subprocess.run(['scancel', job_id1])
+                print(result2.stderr)
+                raise ValueError(f"Evaluation job submission failed. Aborted {job_id1}.")
+            except NameError:
+                raise ValueError(f"Evaluation job submission failed.")
         
