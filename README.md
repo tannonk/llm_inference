@@ -147,23 +147,6 @@ python -m inference_API_models \
 ```
 
 
-
-#### For Slurm Users Only
-
-For experiments executed on a slurm cluster, we provide relevant scripts in `slurm_scripts`. Here you can launch an inference job by specfying the SBATCH commands and inference paramters using `slurm_scripts/submit_inference.py`, e.g.:
-
-```bash
-python -m slurm_scripts.submit_inference \
-	--use_slurm True --ntasks 1 --cpus_per_task 1 --gres gpu:T4:1 --mem 32GB --time 01:00:00 \ `# SBATCH commands`
-	--model_name_or_path "facebook/opt-iml-1.3b" \ `# inference commands`
-	--input_file "data/asset/dataset/asset.test.jsonl" \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
-	--output_dir "data/outputs" \
-	--prompt_json "prompts/p0.json"
-```
-
-This script will also write a job log file in the `--output_dir`.
-
 ## Prompting
 
 To construct prompts flexibly, we use [LangChain](https://github.com/hwchase17/langchain).
@@ -197,6 +180,44 @@ Prompts can be defined on-the-fly at inference time by passing the relevant argu
 
 However, for reproducibility, we recommend using pre-defined prompts. These contain these relevant fields and easily be used for inference by passing them with the `--prompt_json` argument.
 The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format.
+
+#### Experiments
+
+For experiments, we provide a wrapper script, `run.py` that executes an inference run followed by evaluation of model outputs. For example, to run inference on ASSET with `bloom-560m`, you can run:
+
+```bash
+python -m run \
+    --use_slurm True \
+    --ntasks 1 \
+    --cpus_per_task 1 \
+    --gres gpu:T4:1 \
+    --mem 20GB \
+    --time 00:30:00 \
+    --batch_size 8 \
+    --seed 489 \
+    --model_name_or_path bigscience/bloom-560m \
+    --examples data/asset/dataset/asset.valid.jsonl \
+    --input_file data/asset/dataset/asset.test.jsonl \
+    --prompt_json p0.json
+```
+
+Alternatively, you can also pass a json file in position 1 with some or all of the arguments predefined, e.g.
+
+```bash
+python -m run exp_configs/bloom-560m-3-1.json \
+    --seed 489 \
+    --examples data/asset/dataset/asset.valid.jsonl \
+    --input_file data/asset/dataset/asset.test.jsonl \
+    --prompt_json p0.json
+```
+
+This script will produce the following files to help track experiments:
+
+    - `<output_file>.jsonl`: The predictions of the model on the input file.
+    - `<output_file>.json`: Command line arguments used for the inference run.
+    - `<output_file>.log`: Log file of the inference run.
+    - `<output_file>.eval`: Log file of the automatic evaluation with results. 
+
 
 ## Observations
 

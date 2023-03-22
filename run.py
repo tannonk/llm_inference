@@ -34,6 +34,13 @@ python -m run exp_configs/bloom-560m-3-1.json \
     --input_file data/asset/dataset/asset.test.jsonl \
     --prompt_json p0.json
 
+This script will produce the following files:
+
+    - <output_file>.jsonl: The predictions of the model on the input file.
+    - <output_file>.json: Command line arguments used for the inference run.
+    - <output_file>.log: Log file of the inference run.
+    - <output_file>.eval: Log file of the automatic evaluation with results. 
+
 """
 
 
@@ -261,7 +268,7 @@ if __name__ == "__main__":
     if s_args.do_evaluation: 
         
         # infer log file path
-        log_file = get_output_file_name(i_args, ext=".res") if not s_args.log_file else s_args.log_file
+        log_file = get_output_file_name(i_args, ext=".eval") if not s_args.log_file else s_args.log_file
 
         # check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
