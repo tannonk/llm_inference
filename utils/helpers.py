@@ -131,11 +131,11 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
                                                                 f"{prompt_id}_" \
-                                                                f"{args.few_shot_n}_" \
-                                                                f"{args.n_refs}_" \
-                                                                f"{args.seed}{ext}"
+                                                                f"fs{args.few_shot_n}_" \
+                                                                f"nr{args.n_refs}_" \
+                                                                f"s{args.seed}{ext}"
 
-    logger.info(f"Model outputs will be written to {output_file}")
+    # logger.info(f"Model outputs will be written to {output_file}")
     if Path(output_file).exists():
         logger.warning(f"Output file {output_file} already exists! Overwriting...")
     else: # create directory path if necessary
@@ -148,8 +148,8 @@ def persist_args(args: InferenceArguments) -> None:
     The file name is inferred from the name of the output_file."""
     
     if args.output_file != "stdout":
-        inference_args_file = Path(args.output_file).parent / f'{Path(args.output_file).stem}_args.json'
-    
+        inference_args_file = get_output_file_name(args, ext=".json")
+
         with open(str(inference_args_file), "w", encoding ="utf8") as outf:
             json.dump(args.__dict__, outf, ensure_ascii=False, indent=4)
 

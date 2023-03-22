@@ -10,8 +10,12 @@
 set -x
 
 # hardcoded defaults
-script_path="$( cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
-BASE="$script_path/.."
+BASE="/data/tkew/projects/llm_ats/" # expected path on slurm cluster
+if [ ! -d "$BASE" ]; then
+    echo "Failed to locate BASE directory '$BASE'. Inferring BASE from script path..."
+    SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+    BASE="$(dirname "$SCRIPT_DIR")"
+fi
 
 module purge
 module load anaconda3 multigpu a100

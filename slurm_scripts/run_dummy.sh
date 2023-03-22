@@ -5,11 +5,17 @@
 #SBATCH --time=00:01:00
 #SBATCH --output=%j.out
 
+# __Author__: Tannon Kew (kew@cl.uzh.ch)
+
 # set -x
 
 # hardcoded defaults
-script_path="$( cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
-BASE="$script_path/.."
+BASE="/data/tkew/projects/llm_ats/" # expected path on slurm cluster
+if [ ! -d "$BASE" ]; then
+    echo "Failed to locate BASE directory '$BASE'. Inferring BASE from script path..."
+    SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+    BASE="$(dirname "$SCRIPT_DIR")"
+fi
 
 module purge
 module load anaconda3 multigpu a100
@@ -20,20 +26,8 @@ conda activate llm_hf1 && echo "CONDA ENV: $CONDA_DEFAULT_ENV"
 
 cd "${BASE}" && echo $(pwd) || exit 1
 
-python inference.py "$@"
+echo "Running dummy script..."
 
-# python infrerence.py
-#     --model_name_or_path "bigscience/bloom" \
-#     --max_new_tokens 100 \
-#     --max_memory 0.65 \
-#     --batch_size 8 \
-#     --num_beams 1 \
-#     --num_return_sequences 1 \
-#     --do_sample True \
-#     --top_p 0.9 \
-#     --examples "data/asset/dataset/valid.jsonl" \
-#     --input_file "data/asset/dataset/asset.test.orig" \
-#     --n_refs 1 \
-#     --few_shot_n 3 \
-#     --prompt_prefix "I want you to replace my complex sentence with simple sentence(s). Keep the meaning same, but make them simpler." \
-#     --output_file "data/outputs/bloom/asset.test"
+echo "$@"
+
+# python inference.py "$@"

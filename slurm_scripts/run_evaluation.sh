@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --gres=gpu:T4:1
-#SBATCH --mem=100GB
-#SBATCH --time=02:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --mem=8GB
+#SBATCH --time=01:00:00
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
 
-set -x
+# set -x
 
-# hardcoded defaults
 # hardcoded defaults
 BASE="/data/tkew/projects/llm_ats/" # expected path on slurm cluster
 if [ ! -d "$BASE" ]; then
@@ -18,13 +17,15 @@ if [ ! -d "$BASE" ]; then
     BASE="$(dirname "$SCRIPT_DIR")"
 fi
 
+INFILE="$1"
+
 module purge
-module load anaconda3 gpu t4
+module load anaconda3 gpu
 
 eval "$(conda shell.bash hook)"
 conda activate && echo "CONDA ENV: $CONDA_DEFAULT_ENV"
 conda activate llm_hf1 && echo "CONDA ENV: $CONDA_DEFAULT_ENV"
 
-cd "${BASE}" && echo $(pwd) || exit 1
+cd "$BASE" && echo $(pwd) || exit 1
 
-python inference.py "$@"
+python -m evaluation.simplification_evaluation "$INFILE" --use_cuda
