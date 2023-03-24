@@ -18,7 +18,7 @@ from transformers import HfArgumentParser, set_seed
 
 from utils.helpers import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
 from utils.prompting import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
-from llm_inference import InferenceArguments, LLM, LLAMA
+from llm_inference import InferenceArguments, LLM
 
 
 logger = logging.getLogger(__name__)

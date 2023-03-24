@@ -21,14 +21,11 @@ from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     LlamaForCausalLM,
+    AutoConfig,
     AutoTokenizer,
     HfArgumentParser,
 )
-
-# the following imports are required for LLAMA
-import fire
-from fairscale.nn.model_parallel.initialize import initialize_model_parallel
-from llama import ModelArgs, Transformer, Tokenizer, LLaMA
+from accelerate import init_empty_weights, infer_auto_device_map
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512mb"
 
@@ -77,7 +74,7 @@ class InferenceArguments:
     )
 
     offload_folder: str = field(
-        default=None,
+        default="data/offload/",
         metadata={"help": "directory path for offloading"}
     )
 
@@ -115,7 +112,6 @@ class InferenceArguments:
         metadata={"help": "Minimum length of generated text"}
     )
 
-    
     max_new_tokens: int = field(
         default=100,
         metadata={"help": "Maximum number of tokens to generate"}
@@ -275,23 +271,46 @@ class LLM(object):
         
         if args.is_encoder_decoder:
             model_type = AutoModelForSeq2SeqLM
-        elif "llama" in args.model_name_or_path.lower():
-            model_type = LlamaForCausalLM
         else:
             model_type = AutoModelForCausalLM
 
+        config = AutoConfig.from_pretrained(self.args.model_name_or_path)
+        
+        with init_empty_weights():
+            model = model_type.from_config(config)
+            
+            if torch.cuda.device_count() > 1: # set device map for multi-gpu ensuring no split modules
+                if 'T5Block' in repr(model):
+                    device_map = infer_auto_device_map(model, no_split_module_classes=["T5Block"], dtype=torch.float16, max_memory=self.set_max_memory())
+                    device_map['lm_head'] = device_map["decoder.embed_tokens"] # https://github.com/akkikiki/huggingface_examples/blob/main/examples/load_flan_ul2.py#L15
+                elif 'BloomBlock' in repr(model):
+                    device_map = infer_auto_device_map(model, no_split_module_classes=["BloomBlock"], dtype=torch.float16, max_memory=self.set_max_memory())
+                    device_map['lm_head'] = device_map["transformer.word_embeddings"]
+                elif 'OPTDecoderLayer' in repr(model):
+                    device_map = infer_auto_device_map(model, no_split_module_classes=["OPTDecoderLayer"], dtype=torch.float16, max_memory=self.set_max_memory())
+                    device_map['lm_head'] = device_map["model.decoder.embed_tokens"] # https://github.com/akkikiki/huggingface_examples/blob/main/examples/load_opt.py#L18
+                elif 'LlamaDecoderLayer' in repr(model):
+                    device_map = infer_auto_device_map(model, no_split_module_classes=["LlamaDecoderLayer"], dtype=torch.float16, max_memory=self.set_max_memory())
+                    # device_map['lm_head'] = device_map["model.embed_tokens"] # not required for Llama
+                else:
+                    raise NotImplementedError(f"Model type {self.args.model_name_or_path} not supported")
+                
+            else:
+                device_map = "auto"
+
+        logger.info(f"Device map: {device_map}")
+
         self.model = model_type.from_pretrained(
             self.args.model_name_or_path,
-            device_map=self.args.device_map, # "auto",
+            device_map=device_map,
             load_in_8bit=self.args.load_in_8bit,
             torch_dtype=torch.float16,
-            max_memory=self.set_max_memory(),
             offload_state_dict=self.args.offload_state_dict,
             offload_folder=self.args.offload_folder,
             )
         end_time = time.time()
         logger.info(f"Loaded model {self.args.model_name_or_path} in {end_time - start_time:.4f} seconds")
-        logger.info(f"Model footprint {self.model.get_memory_footprint() / (1024*1024*1024):.4f} GB")
+        logger.info(f"Model parameters: {self.model.num_parameters():,} / footprint: {self.model.get_memory_footprint() / (1024*1024*1024):.2f} GB")
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_name_or_path, padding_side='left')
 
@@ -303,7 +322,7 @@ class LLM(object):
 
     def set_max_memory(self) -> Optional[Dict[int, str]]:
         n_gpus = torch.cuda.device_count()
-        if self.args.max_memory and self.args.max_memory != 1.0 and n_gpus > 1:
+        if self.args.max_memory and n_gpus > 1:
             logger.info(f"Infering max memory...")
             t = torch.cuda.get_device_properties(0).total_memory / (1024*1024*1024)
             # note, we use math.floor() as a conservative rounding method
@@ -313,7 +332,7 @@ class LLM(object):
                 i: (f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else
                     f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
                 }
-            max_memory['cpu'] = '400GiB' # may need to lower this depending on hardware
+            # max_memory['cpu'] = '400GiB' # may need to lower this depending on hardware
             
             logger.info(f"Set maximum memory: {max_memory}")
             return max_memory
@@ -378,90 +397,90 @@ class LLM(object):
         return outputs
 
 
-class LLAMA(object):
-    """Wrapper class for LLaMA model. Provides the same interface as the above LLM class for HuggingFace models."""
-    def __init__(self, args: InferenceArguments) -> None:
-        #
-        # from utils.model import setup_model_parallel, load
+# class LLAMA(object):
+#     """Wrapper class for LLaMA model. Provides the same interface as the above LLM class for HuggingFace models."""
+#     def __init__(self, args: InferenceArguments) -> None:
+#         #
+#         # from utils.model import setup_model_parallel, load
         
-        self.args = args
+#         self.args = args
 
-        logger.info("Loading LLaMA model")
-        local_rank, world_size = self.setup_model_parallel(self.args.seed)
-        if local_rank > 0:
-            sys.stdout = open(os.devnull, 'w')
+#         logger.info("Loading LLaMA model")
+#         local_rank, world_size = self.setup_model_parallel(self.args.seed)
+#         if local_rank > 0:
+#             sys.stdout = open(os.devnull, 'w')
 
-        # tokenizer is expected to be in the parent directory of the model
-        tokenizer_path = str(Path(self.args.model_name_or_path).parent / "tokenizer.model")
+#         # tokenizer is expected to be in the parent directory of the model
+#         tokenizer_path = str(Path(self.args.model_name_or_path).parent / "tokenizer.model")
         
-        self.model = self.load(
-            self.args.model_name_or_path, 
-            tokenizer_path, 
-            local_rank, 
-            world_size,
-            max_seq_len=512,
-            max_batch_size=self.args.batch_size
-            )
+#         self.model = self.load(
+#             self.args.model_name_or_path, 
+#             tokenizer_path, 
+#             local_rank, 
+#             world_size,
+#             max_seq_len=512,
+#             max_batch_size=self.args.batch_size
+#             )
 
-        return
+#         return
 
-    def generate_from_model(self, inputs: List[str]) -> List[str]:
+#     def generate_from_model(self, inputs: List[str]) -> List[str]:
 
-        outputs = self.model.generate(
-            inputs, 
-            max_gen_len=self.args.max_new_tokens, 
-            temperature=self.args.temperature, 
-            top_p=self.args.top_p
-        )
-        # pack outputs into a list of lists to match expected format from HF models
-        return [[o] for o in outputs]
+#         outputs = self.model.generate(
+#             inputs, 
+#             max_gen_len=self.args.max_new_tokens, 
+#             temperature=self.args.temperature, 
+#             top_p=self.args.top_p
+#         )
+#         # pack outputs into a list of lists to match expected format from HF models
+#         return [[o] for o in outputs]
 
-    @staticmethod
-    def setup_model_parallel(seed: int) -> Tuple[int, int]:
-        local_rank = int(os.environ.get("LOCAL_RANK", -1))
-        world_size = int(os.environ.get("WORLD_SIZE", -1))
+#     @staticmethod
+#     def setup_model_parallel(seed: int) -> Tuple[int, int]:
+#         local_rank = int(os.environ.get("LOCAL_RANK", -1))
+#         world_size = int(os.environ.get("WORLD_SIZE", -1))
 
-        torch.distributed.init_process_group("nccl")
-        initialize_model_parallel(world_size)
-        torch.cuda.set_device(local_rank)
+#         torch.distributed.init_process_group("nccl")
+#         initialize_model_parallel(world_size)
+#         torch.cuda.set_device(local_rank)
 
-        # seed must be the same in all processes
-        torch.manual_seed(seed)
-        return local_rank, world_size
+#         # seed must be the same in all processes
+#         torch.manual_seed(seed)
+#         return local_rank, world_size
 
-    @staticmethod
-    def load(
-        ckpt_dir: str,
-        tokenizer_path: str,
-        local_rank: int,
-        world_size: int,
-        max_seq_len: int,
-        max_batch_size: int,
-    ) -> LLaMA:
-        start_time = time.time()
-        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
-        assert world_size == len(
-            checkpoints
-        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
-        ckpt_path = checkpoints[local_rank]
-        print("Loading")
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
-        with open(Path(ckpt_dir) / "params.json", "r") as f:
-            params = json.loads(f.read())
+#     @staticmethod
+#     def load(
+#         ckpt_dir: str,
+#         tokenizer_path: str,
+#         local_rank: int,
+#         world_size: int,
+#         max_seq_len: int,
+#         max_batch_size: int,
+#     ) -> LLaMA:
+#         start_time = time.time()
+#         checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+#         assert world_size == len(
+#             checkpoints
+#         ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
+#         ckpt_path = checkpoints[local_rank]
+#         print("Loading")
+#         checkpoint = torch.load(ckpt_path, map_location="cpu")
+#         with open(Path(ckpt_dir) / "params.json", "r") as f:
+#             params = json.loads(f.read())
 
-        model_args: ModelArgs = ModelArgs(
-            max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params
-        )
-        tokenizer = Tokenizer(model_path=tokenizer_path)
-        model_args.vocab_size = tokenizer.n_words
-        torch.set_default_tensor_type(torch.cuda.HalfTensor)
-        model = Transformer(model_args)
-        torch.set_default_tensor_type(torch.FloatTensor)
-        model.load_state_dict(checkpoint, strict=False)
+#         model_args: ModelArgs = ModelArgs(
+#             max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params
+#         )
+#         tokenizer = Tokenizer(model_path=tokenizer_path)
+#         model_args.vocab_size = tokenizer.n_words
+#         torch.set_default_tensor_type(torch.cuda.HalfTensor)
+#         model = Transformer(model_args)
+#         torch.set_default_tensor_type(torch.FloatTensor)
+#         model.load_state_dict(checkpoint, strict=False)
 
-        generator = LLaMA(model, tokenizer)
-        print(f"Loaded in {time.time() - start_time:.2f} seconds")
-        return generator
+#         generator = LLaMA(model, tokenizer)
+#         print(f"Loaded in {time.time() - start_time:.2f} seconds")
+#         return generator
 
 
 if __name__ == "__main__":
@@ -469,8 +488,8 @@ if __name__ == "__main__":
     hf_parser = HfArgumentParser((InferenceArguments))
     args = hf_parser.parse_args_into_dataclasses()[0]
 
-    # llm = LLM(args)
-    # print(llm.generate_from_model(["This is an awesome prompt :)"]))
-
-    llm = LLAMA(args)
+    llm = LLM(args)
     print(llm.generate_from_model(["This is an awesome prompt :)"]))
+
+    # llm = LLAMA(args)
+    # print(llm.generate_from_model(["This is an awesome prompt :)"]))

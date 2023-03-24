@@ -61,7 +61,7 @@ cd ../..
 
 ## Data
 
-To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_data.sh`. 
+To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_datasets.sh`. 
 This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
 
 ```bash
@@ -201,10 +201,10 @@ python -m run \
     --prompt_json p0.json
 ```
 
-Alternatively, you can also pass a json file in position 1 with some or all of the arguments predefined, e.g.
+Alternatively, you can also pass a json file in position 1 with some or all of the arguments predefined. For example, on a server with RTX 3090 (24GB) GPUs, you could use the following:
 
 ```bash
-python -m run exp_configs/bloom-560m-3-1.json \
+python -m run exp_configs/rtx/bloom-560m.json \
     --seed 489 \
     --examples data/asset/dataset/asset.valid.jsonl \
     --input_file data/asset/dataset/asset.test.jsonl \
@@ -219,29 +219,6 @@ This script will produce the following files to help track experiments:
     - `<output_file>.eval`: Log file of the automatic evaluation with results. 
 
 
-## Observations
-
-Below are some observations from running inference with LLMs:
-
-1. Beam search uses significantly more GPU memory compared to sampling-based decoding methods with `num_beams=1`
-<!-- 2. Inference with `bigscience/bloom-560m` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~6GB GPU memory -->
-<!-- 3. Inference with `bigscience/bloom-1b1` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~8GB GPU memory -->
-
-The following table is based off of generating with the following params (unless otherwise specified): `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9`
-
-| 		Model 	     	| 	Footprint       | Loading time  | Inference time  | Inference GPU mem |    # GPUS     |
-| :-------------------: | :---------------: | :-----------: | :-------------: | :---------------: | :-----------: |
-| bigscience/bloom-560m |     0.78GB        |    20 secs    | ~10 secs (bs=4) |        ~6GB       |  1 (T4/16GB)  |
-| bigscience/bloom-1b1  |     1.35GB        |     1 min     | ~10 ses (bs=4)  |        ~8GB       |  1 (T4/16GB)  |
-| bigscience/bloom      | 	  167.5 GB	    |    15 mins    | ~45 secs (bs=8) |          ?        | 4 (A100/80GB) |
-| facebook/opt-30b      |     28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
-| facebook/opt-iml-max-30b |  28.26GB       |     4 mins    | ~27 secs (bs=8) |       ~60GB       | 1 (A100/80GB) |
-| facebook/opt-66b      |     61.65GB       |     5 mins    | ~40 secs (bs=8) |       ~150GB      | 2 (A100/80GB) |
-|                       |                   |               |                 |                   |               |
-| facebook/llama-7B     |       12GB        |     <1 min    | ~6 secs (bs=8)  |       ~20GB       | 1 (A100/80GB) |
-
-
-
 ## Limitations
 
 LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. 
@@ -251,5 +228,7 @@ The function `postprocess_model_outputs()` is used to extract the single relevan
 
 - [x] task-specific prompts
 - [ ] datasets and data prep
-	- [ ] Newsela
-	- [ ] Hsplit
+	- [x] Newsela
+	- [x] Hsplit
+	- [ ] Medical
+	- [ ] Legal (?)

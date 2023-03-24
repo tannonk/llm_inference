@@ -2,12 +2,13 @@
     "use_slurm": true,
     "ntasks": 1,
     "cpus_per_task": 1,
-    "n_gpus": 2,
+    "n_gpus": 1,
     "gpu_type": "T4",
     "mem": "40GB",
     "time": "01:00:00",
-    "model_name_or_path": "bigscience/bloom-7b1",
+    "model_name_or_path": "google/flan-t5-small",
+    "is_encoder_decoder": true,
     "max_new_tokens": 100,
-    "max_memory": 0.8,
+    "max_memory": 1.0,
     "batch_size": 8
 }

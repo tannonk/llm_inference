@@ -1,0 +1,13 @@
+{
+    "use_slurm": true,
+    "ntasks": 1,
+    "cpus_per_task": 1,
+    "n_gpus": 8,
+    "gpu_type": "A100",
+    "mem": "160GB",
+    "time": "02:00:00",
+    "model_name_or_path": "bigscience/bloomz",
+    "max_new_tokens": 100,
+    "max_memory": 1.0,
+    "batch_size": 2
+}

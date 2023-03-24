@@ -112,6 +112,11 @@ class SubmitArguments:
         metadata={"help": "If set to True, submission command is executed on dummy script"}
     )
 
+    dry_run: bool = field(
+        default=False,
+        metadata={"help": "If set to True, submission command is not executed"}
+    )
+
     do_inference: bool = field(
         default=True,
         metadata={"help": "If set to True, inference is executed"}
@@ -151,6 +156,26 @@ def get_free_gpu_indices():
 
     return [i for i in range(total_gpu_num) if i not in gpu_ids_in_use]
 
+def parse_arg_value(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n"):
+        return False
+    elif v.lower() in ("none", "null"):
+        return None
+    # Try to parse as int
+    try:
+        return int(v)
+    except:
+        try:
+            return float(v)
+        except:
+            pass
+    return v
+
+    
 
 if __name__ == "__main__":
     
@@ -166,9 +191,9 @@ if __name__ == "__main__":
             key = remaining_args[i].lstrip('-').replace('-', '_')
             value = remaining_args[i+1]
             if key in i_args.__dict__:
-                i_args.__dict__[key] = value
+                i_args.__dict__[key] = parse_arg_value(value)
             elif key in s_args.__dict__:
-                s_args.__dict__[key] = value
+                s_args.__dict__[key] = parse_arg_value(value)
             else:
                 raise ValueError(f"Unrecognized argument: {key}")
 
@@ -193,7 +218,7 @@ if __name__ == "__main__":
                 avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
 
-            suffix = f' >| {log_file} &'
+            suffix = f' >| {log_file} 2>&1 &'
         
         else:
 
@@ -224,14 +249,20 @@ if __name__ == "__main__":
 
     
         args = f'--model_name_or_path "{i_args.model_name_or_path}" ' \
-                    f'--max_new_tokens {i_args.max_new_tokens} ' \
+                    f'--is_encoder_decoder {i_args.is_encoder_decoder} ' \
+                    f'--load_in_8bit {i_args.load_in_8bit} ' \
+                    f'--offload_state_dict {i_args.offload_state_dict} ' \
+                    f'--offload_folder "{i_args.offload_folder}" ' \
+                    f'--device_map "{i_args.device_map}" ' \
                     f'--max_memory {i_args.max_memory} ' \
+                    f'--max_new_tokens {i_args.max_new_tokens} ' \
                     f'--batch_size {i_args.batch_size} ' \
                     f'--num_beams {i_args.num_beams} ' \
                     f'--num_return_sequences {i_args.num_return_sequences} ' \
                     f'--seed {i_args.seed} ' \
                     f'--do_sample {i_args.do_sample} ' \
                     f'--top_p {i_args.top_p} ' \
+                    f'--top_k {i_args.top_k} ' \
                     f'--temperature {i_args.temperature} ' \
                     f'--examples "{i_args.examples}" ' \
                     f'--input_file "{i_args.input_file}" ' \
@@ -253,17 +284,21 @@ if __name__ == "__main__":
         print(inference_command)
         print()
         
-        result1 = subprocess.run(inference_command, capture_output=True, text=True, shell=True)
-        # Check the status of job A and get the job ID from slurm
-        if result1.returncode == 0:
-            try:
-                job_id1 = result1.stdout.strip().split()[-1]
-                print(f"Inference job id: {job_id1}")
-            except IndexError:
-                pass
+        if s_args.dry_run:
+            print("Dry run. Inference job not submitted.")
+            job_id1 = None
         else:
-            print(result1.stderr)
-            raise ValueError(f"Inference job submission failed")    
+            result1 = subprocess.run(inference_command, capture_output=True, text=True, shell=True)
+            # Check the status of job A and get the job ID from slurm
+            if result1.returncode == 0:
+                try:
+                    job_id1 = result1.stdout.strip().split()[-1]
+                    print(f"Inference job id: {job_id1}")
+                except IndexError:
+                    pass
+            else:
+                print(result1.stderr)
+                raise ValueError(f"Inference job submission failed")                
 
     # Evaluate     
     if s_args.do_evaluation: 
@@ -284,7 +319,7 @@ if __name__ == "__main__":
             else:
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
 
-            suffix = f' >| {log_file} &'
+            suffix = f' >| {log_file} 2>&1 &'
 
         else: # will submit a slurm job
 
@@ -308,21 +343,25 @@ if __name__ == "__main__":
         print(evaluate_command)
         print()
         
-        result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True)
-        
-        if result2.returncode == 0:
-            try:
-                job_id2 = result2.stdout.strip().split()[-1]
-                print(f"Evaluation job id: {job_id2}")
-            except IndexError:
-                pass
-        
-        else: 
-            # Abort inference job
-            try:
-                subprocess.run(['scancel', job_id1])
-                print(result2.stderr)
-                raise ValueError(f"Evaluation job submission failed. Aborted {job_id1}.")
-            except NameError:
-                raise ValueError(f"Evaluation job submission failed.")
-        
+        if s_args.dry_run:
+            print("Dry run. Evaluation job not submitted.")
+            job_id1 = None
+        else:
+            result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True)
+            
+            if result2.returncode == 0:
+                try:
+                    job_id2 = result2.stdout.strip().split()[-1]
+                    print(f"Evaluation job id: {job_id2}")
+                except IndexError:
+                    pass
+            
+            else: 
+                # Abort inference job
+                try:
+                    subprocess.run(['scancel', job_id1])
+                    print(result2.stderr)
+                    raise ValueError(f"Evaluation job submission failed. Aborted {job_id1}.")
+                except NameError:
+                    raise ValueError(f"Evaluation job submission failed.")
+            

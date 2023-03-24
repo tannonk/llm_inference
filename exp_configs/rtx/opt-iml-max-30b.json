@@ -1,0 +1,13 @@
+{
+    "use_slurm": true,
+    "ntasks": 1,
+    "cpus_per_task": 1,
+    "n_gpus": 4,
+    "gpu_type": "A100",
+    "mem": "80GB",
+    "time": "01:00:00",
+    "model_name_or_path": "facebook/opt-iml-max-30b",
+    "max_new_tokens": 100,
+    "max_memory": 1.0,
+    "batch_size": 8
+}

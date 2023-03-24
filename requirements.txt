@@ -6,8 +6,9 @@ langchain==0.0.94
 nltk==3.8.1
 torch==1.13.1
 # transformers
-sentencepiece==0.1.97
 pandas
+protobuf==3.20.0
+sentencepiece==0.1.97
 jsonlines
 cohere==3.10.0
 openai==0.27.2
