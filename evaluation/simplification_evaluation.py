@@ -45,6 +45,7 @@ def set_args():
     parser.add_argument('hyp_file', type=str, help='Path to a JSONL file with model outputs and optionally source and reference sentences.')
     parser.add_argument('--src_file', type=str, required=False, help='Path to a JSONL file with source and optionally reference sentences.')
     parser.add_argument('--ref_file', type=str, required=False, help='Path to a TXT file with reference sentences. WARING: assumes only one reference set.')
+    parser.add_argument('--out_file', type=str, required=False, help='Path to a CSV file with metric scores.')
     parser.add_argument('--use_cuda', action='store_true', help='if provided, model-based metrics such as PPL and BERTScore will be computed on GPU.')
     return parser.parse_args()
 
@@ -124,4 +125,8 @@ if __name__ == '__main__':
     results['file_id'] = args.hyp_file
     
     df = pd.DataFrame(data=results, index=[0]).round(4)
+    if args.out_file:
+        df.to_csv(args.out_file, sep=';', index=False, float_format='%.4f', encoding='utf-8')
+        logger.info(f'Wrote results to {args.out_file}')
+    # also print to stdout
     print(df.to_csv(sep=';', index=False))

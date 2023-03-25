@@ -292,6 +292,9 @@ class LLM(object):
                 elif 'LlamaDecoderLayer' in repr(model):
                     device_map = infer_auto_device_map(model, no_split_module_classes=["LlamaDecoderLayer"], dtype=torch.float16, max_memory=self.set_max_memory())
                     # device_map['lm_head'] = device_map["model.embed_tokens"] # not required for Llama
+                elif 'GPTNeoXLayer' in repr(model):
+                    device_map = infer_auto_device_map(model, no_split_module_classes=["GPTNeoXLayer"], dtype=torch.float16, max_memory=self.set_max_memory())
+                    # device_map['embed_out'] = device_map["gpt_neox.embed_in"] # not required for GPTNeoX
                 else:
                     raise NotImplementedError(f"Model type {self.args.model_name_or_path} not supported")
                 
@@ -348,6 +351,7 @@ class LLM(object):
         start_time = time.time()
         model_outputs = self.model.generate(
             input_ids=encoded_inputs['input_ids'].cuda(), 
+            attention_mask=encoded_inputs['attention_mask'].cuda(),
             max_new_tokens=self.args.max_new_tokens, 
             min_length=self.args.min_length,
             num_beams=self.args.num_beams,

@@ -17,6 +17,7 @@ data/onestopenglish/
 data/turkcorpus/
 data/newsela-auto/
 data/outputs/
+data/test_run_outputs/
 
 # model dir
 models/

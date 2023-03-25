@@ -7,9 +7,8 @@
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
 
-set -x
+# set -x
 
-# hardcoded defaults
 # hardcoded defaults
 BASE="/data/tkew/projects/llm_ats/" # expected path on slurm cluster
 if [ ! -d "$BASE" ]; then

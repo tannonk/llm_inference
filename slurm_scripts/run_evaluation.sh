@@ -18,6 +18,7 @@ if [ ! -d "$BASE" ]; then
 fi
 
 INFILE="$1"
+OUTFILE="$2"
 
 module purge
 module load anaconda3 gpu
@@ -28,4 +29,4 @@ conda activate llm_hf1 && echo "CONDA ENV: $CONDA_DEFAULT_ENV"
 
 cd "$BASE" && echo $(pwd) || exit 1
 
-python -m evaluation.simplification_evaluation "$INFILE" --use_cuda
+python -m evaluation.simplification_evaluation "$INFILE" --out_file "$OUTFILE" --use_cuda

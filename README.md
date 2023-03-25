@@ -219,16 +219,17 @@ This script will produce the following files to help track experiments:
     - `<output_file>.eval`: Log file of the automatic evaluation with results. 
 
 
-## Limitations
+## Limitations & Known Issues
 
-LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. 
-The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
+- LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
+- Setting `--n_refs` > 1 allows for a few-shot prompt example to have multiple possible targets (e.g. sampled from multiple validation set reference sentences). The current method of handling these is to enumerate them starting at 0, but this doesn't seem very elegant or intuitive.
 
 ## TODOs
 
-- [x] task-specific prompts
-- [ ] datasets and data prep
+- [ ] Task-specific prompts
+- [ ] Datasets and data prep
 	- [x] Newsela
 	- [x] Hsplit
 	- [ ] Medical
 	- [ ] Legal (?)
+- [ ] Detailed evaluation

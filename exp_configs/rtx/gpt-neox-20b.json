@@ -4,10 +4,9 @@
     "cpus_per_task": 1,
     "n_gpus": 3,
     "gpu_type": "A100",
-    "mem": "40GB",
-    "time": "01:00:00",
-    "model_name_or_path": "google/flan-ul2",
-    "is_encoder_decoder": true,
+    "mem": "60GB",
+    "time": "02:00:00",
+    "model_name_or_path": "EleutherAI/gpt-neox-20b",
     "max_new_tokens": 100,
     "max_memory": 1.0,
     "batch_size": 8

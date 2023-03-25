@@ -27,47 +27,52 @@ Below are some observations from running inference with LLMs:
 <!-- 2. Inference with `bigscience/bloom-560m` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~6GB GPU memory -->
 <!-- 3. Inference with `bigscience/bloom-1b1` on a single T4 (16GB) GPU takes ~10 seconds per batch with `batch_size=4, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9` and uses ~8GB GPU memory -->
 2. The model footprint (loaded as 8bit-int) is roughly 1GB per 1B parameters. To run batched inference, you need to account for sufficient headroom.
+3. Inference with GPT-NeoX is very slow! (~ 1.5 hours on ASSET test set (359))
 
 The following table contains some statistics observed during test inference runs with the following params (unless otherwise specified): `batch_size=8, max_new_tokens=100, num_beams=1, num_return_sequences=1, do_sample=True, top_p=0.9`
 
-|           model           | Footprint (8bit-int) | Loading time  |  Inference time  | Inference GPU mem |             # GPUS             |       bash         |        slurm       |
-| :-----------------------: | :------------------: | :-----------: | :--------------: | :---------------: | :----------------------------: | :----------------: | :----------------: |
-| bigscience/bloom-560m     |      0.78 GB         |    20 secs    | ~10 secs (bs=4)  |        ~6GB       | 1 T4-16GB                      | :white_check_mark: |                    |
-| bigscience/bloomz-560m    |      0.78 GB         |    20 secs    | ~10 secs (bs=4)  |        ~6GB       | 1 T4-16GB                      | :white_check_mark: |                    |
-| bigscience/bloom-1b1      |      1.35 GB         |     1 min     | ~10 ses (bs=4)   |        ~8GB       | 1 T4-16GB                      | :white_check_mark: |                    |
-| bigscience/bloomz-1b1     |      1.35 GB         |     1 min     | ~10 ses (bs=4)   |        ~8GB       | 1 T4-16GB                      | :white_check_mark: |                    |
-| bigscience/bloom-3b       |      3.39 GB         |               |                  |                   | 1 T4-16GB                      | :white_check_mark: |  |
-| bigscience/bloomz-3b1     |      3.39 GB         |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| bigscience/bloom-7b1      |      7.54 GB         |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| bigscience/bloom          |     167.5 GB	       |    15 mins    | ~45 secs (bs=8)  |                   | 4 A100-80GB                    |                    |  |
-| bigscience/bloomz         |     167.5 GB	       |    15 mins    | ~45 secs (bs=8)  |                   | 4 A100-80GB                    |                    |  |
-| facebook/opt-1.3b         |     1.32 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| facebook/opt-iml-max-1.3b |     1.32 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| facebook/opt-6.7b         |     6.40 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| facebook/opt-13b          |    12.22 GB          |               |                  |                   | 1 RTX 3090-24GB                | :white_check_mark: |  |
-| facebook/opt-30b          |     28.26GB          |     4 mins    | ~27 secs (bs=8)  |       ~60GB       | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| facebook/opt-iml-max-30b  |     28.26GB          |     4 mins    | ~27 secs (bs=8)  |       ~60GB       | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| facebook/opt-66b          |     61.65GB          |     5 mins    | ~40 secs (bs=8)  |       ~150GB      | 2 A100-80GB                    | :white_check_mark: |  |
-| facebook/llama-7B         |      6.58GB          |     <1 min    | ~6 secs (bs=8)   |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| facebook/llama-13b        |      12.5GB          |               |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| facebook/llama-30b        |      30.81 GB        |   ~130 secs   | ~116 secs (bs=8) |                   | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| facebook/llama-65b        |      61.45 GB        |               |                  |                   | 7 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-|                           |                      |               |                  |                   |                                |                    |  |
-| ul2 (20b)                 |    30.24 GB          |               |                  |                   | 2 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| flan-ul2 (20b)            |    30.24 GB          |               |                  |                   | 2 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| t0_3b                     |     4.18 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| t0 (11b)                  |    16.24 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| t0pp (11b)                |    16.24 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| t5-small (77m)            |     0.12 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| t5-base (250m)            |     0.38 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| t5-large (780m)           |     1.17 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| t5-xl (3b)                |     4.18 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| t5-xxl (11b)              |     16.24 GB         |               |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
-| flan-t5-small (77m)       |     0.12 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| flan-t5-base (250m)       |     0.38 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| flan-t5-large (780m)      |     1.17 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| flan-t5-xl (3b)           |     4.18 GB          |               |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |  |
-| flan-t5-xxl (11b)         |     16.24 GB         |               |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |  |
+|           model           | Footprint (8bit-int) |  Inference time  | Inference GPU mem |             # GPUS             |       rtx          |        cluster     |
+| :-----------------------: | :------------------: | :--------------: | :---------------: | :----------------------------: | :----------------: | :----------------: |
+| bigscience/bloom-560m     |      0.78 GB         | ~10 secs (bs=4)  |        ~6GB       | 1 T4-16GB                      | :white_check_mark: |                    |
+| bigscience/bloomz-560m    |      0.78 GB         | ~10 secs (bs=4)  |        ~6GB       | 1 T4-16GB                      | :white_check_mark: |                    |
+| bigscience/bloom-1b1      |      1.35 GB         | ~10 ses (bs=4)   |        ~8GB       | 1 T4-16GB                      | :white_check_mark: |                    |
+| bigscience/bloomz-1b1     |      1.35 GB         | ~10 ses (bs=4)   |        ~8GB       | 1 T4-16GB                      | :white_check_mark: |                    |
+| bigscience/bloom-3b       |      3.39 GB         |                  |                   | 1 T4-16GB                      | :white_check_mark: |                    |
+| bigscience/bloomz-3b1     |      3.39 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| bigscience/bloom-7b1      |      7.54 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| bigscience/bloom          |    167.5 GB	       | ~45 secs (bs=8)  |                   | 4 A100-80GB                    |                    |                    |
+| bigscience/bloomz         |    167.5 GB	       | ~45 secs (bs=8)  |                   | 4 A100-80GB                    |                    |                    |
+| facebook/opt-1.3b         |      1.32 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| facebook/opt-iml-max-1.3b |      1.32 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| facebook/opt-6.7b         |      6.40 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| facebook/opt-13b          |     12.22 GB         |                  |                   | 1 RTX 3090-24GB                | :white_check_mark: |                    |
+| facebook/opt-30b          |     28.26 GB         | ~27 secs (bs=8)  |       ~60GB       | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| facebook/opt-iml-max-30b  |     28.26 GB         | ~27 secs (bs=8)  |       ~60GB       | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| facebook/opt-66b          |     61.65 GB         | ~40 secs (bs=8)  |       ~150GB      | 2 A100-80GB                    | :white_check_mark: |                    |
+| facebook/llama-7B         |      6.58 GB         | ~6 secs (bs=8)   |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| facebook/llama-13b        |     12.5 GB          |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| facebook/llama-30b        |     30.81 GB         | ~116 secs (bs=8) |                   | 4 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| facebook/llama-65b        |     61.45 GB         |                  |                   | 7 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| EleutherAI/gpt-j-6b       |      6.13 GB         | ~16 secs (bs=8)  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| EleutherAI/gpt-neox-20b   |     61.45 GB         |                  |                   | 3 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+|                           |                      |                  |                   |                                |                    |                    |
+|         Enc-Dec           |                      |                  |                   |                                |                    |                    |
+|                           |                      |                  |                   |                                |                    |                    |
+| ul2 (20b)                 |     30.24 GB         |  ~30 secs (bs=8) |                   | 2 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| flan-ul2 (20b)            |     30.24 GB         |                  |                   | 2 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| t0_3b                     |      4.18 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| t0 (11b)                  |     16.24 GB         |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| t0pp (11b)                |     16.24 GB         |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| t5-small (77m)            |      0.12 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| t5-base (250m)            |      0.38 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| t5-large (780m)           |      1.17 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| t5-xl (3b)                |      4.18 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| t5-xxl (11b)              |     16.24 GB         |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
+| flan-t5-small (77m)       |      0.12 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| flan-t5-base (250m)       |      0.38 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| flan-t5-large (780m)      |      1.17 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| flan-t5-xl (3b)           |      4.18 GB         |                  |                   | 1 RTX 3090-24GB / 1 T4-16GB    | :white_check_mark: |                    |
+| flan-t5-xxl (11b)         |     16.24 GB         |                  |                   | 1 RTX 3090-24GB / 1 A100-80GB  | :white_check_mark: |                    |
 
 ## Notes
 

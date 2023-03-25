@@ -48,6 +48,7 @@ This script will produce the following files:
 import os, sys
 import subprocess
 import json
+from pathlib import Path
 
 from dataclasses import dataclass, field
 
@@ -105,6 +106,11 @@ class SubmitArguments:
     log_file: str = field(
         default="",
         metadata={"help": "SLURM log file path"}
+    )
+
+    eval_file: str = field(
+        default="",
+        metadata={"help": "Eval results file path"}
     )
 
     debug: bool = field(
@@ -165,8 +171,7 @@ def parse_arg_value(v):
         return False
     elif v.lower() in ("none", "null"):
         return None
-    # Try to parse as int
-    try:
+    try: # attmept to parse as int
         return int(v)
     except:
         try:
@@ -205,10 +210,11 @@ if __name__ == "__main__":
 
     # Inference
     if s_args.do_inference:
+        
         # Check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
-            prefix = 'nohup bash '
+            prefix = 'bash '
 
             # Set GPU resources
             avail_gpus = get_free_gpu_indices()
@@ -218,7 +224,7 @@ if __name__ == "__main__":
                 avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
 
-            suffix = f' >| {log_file} 2>&1 &'
+            suffix = f'>| {log_file} 2>&1'
         
         else:
 
@@ -276,7 +282,7 @@ if __name__ == "__main__":
                     f'--source_field "{i_args.source_field}" ' \
                     f'--target_field "{i_args.target_field}" ' \
                     f'--output_dir "{i_args.output_dir}" ' \
-                    f'--output_file "{output_file}"'
+                    f'--output_file "{output_file}" '
 
         inference_command = prefix + script + args + suffix
         
@@ -287,29 +293,35 @@ if __name__ == "__main__":
         if s_args.dry_run:
             print("Dry run. Inference job not submitted.")
             job_id1 = None
+        
         else:
-            result1 = subprocess.run(inference_command, capture_output=True, text=True, shell=True)
+
+            result1 = subprocess.run(inference_command, capture_output=True, text=True, shell=True, check=True)
+            
             # Check the status of job A and get the job ID from slurm
             if result1.returncode == 0:
                 try:
-                    job_id1 = result1.stdout.strip().split()[-1]
-                    print(f"Inference job id: {job_id1}")
-                except IndexError:
-                    pass
+                    job_id1 = int(result1.stdout.strip().split()[-1])
+                except:
+                    job_id1 = None
+                print(f"Inference job id: {job_id1}")
             else:
                 print(result1.stderr)
                 raise ValueError(f"Inference job submission failed")                
 
     # Evaluate     
     if s_args.do_evaluation: 
-        
-        # infer log file path
-        log_file = get_output_file_name(i_args, ext=".eval") if not s_args.log_file else s_args.log_file
+
+        if not Path(output_file).exists():
+            raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
+
+        # infer output file path
+        eval_file = get_output_file_name(i_args, ext=".eval") if not s_args.eval_file else s_args.eval_file
 
         # check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
-            prefix = 'nohup bash ' # will execute the directly
+            prefix = 'bash ' # will execute the directly
 
             # Set GPU resources
             avail_gpus = get_free_gpu_indices()
@@ -319,7 +331,7 @@ if __name__ == "__main__":
             else:
                 prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
 
-            suffix = f' >| {log_file} 2>&1 &'
+            suffix = f'>> {log_file} 2>&1' # append to existing log file
 
         else: # will submit a slurm job
 
@@ -328,7 +340,7 @@ if __name__ == "__main__":
             if s_args.do_inference:
                 prefix += f'--dependency=afterok:{job_id1} '
 
-            prefix += f'--output="{log_file}" '
+            prefix += f'--output={log_file} --open-mode=append ' # append to existing log file
 
             suffix = ''
 
@@ -337,7 +349,9 @@ if __name__ == "__main__":
         else:
             script = 'slurm_scripts/run_evaluation.sh '
 
-        evaluate_command = prefix + script + f'"{output_file}"' + suffix
+        args = f"{output_file} {eval_file} "
+
+        evaluate_command = prefix + script + args + suffix
         
         print()
         print(evaluate_command)
@@ -345,23 +359,18 @@ if __name__ == "__main__":
         
         if s_args.dry_run:
             print("Dry run. Evaluation job not submitted.")
-            job_id1 = None
+            job_id2 = None
+        
         else:
-            result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True)
-            
+            result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True, check=True)
+
             if result2.returncode == 0:
                 try:
-                    job_id2 = result2.stdout.strip().split()[-1]
-                    print(f"Evaluation job id: {job_id2}")
-                except IndexError:
-                    pass
-            
+                    job_id2 = int(result2.stdout.strip().split()[-1])
+                except:
+                    job_id2 = None
+                print(f"Evaluation job id: {job_id2}")
             else: 
-                # Abort inference job
-                try:
-                    subprocess.run(['scancel', job_id1])
-                    print(result2.stderr)
-                    raise ValueError(f"Evaluation job submission failed. Aborted {job_id1}.")
-                except NameError:
-                    raise ValueError(f"Evaluation job submission failed.")
+                print(result2.stderr)
+                raise ValueError(f"Evaluation job submission failed.")
             
