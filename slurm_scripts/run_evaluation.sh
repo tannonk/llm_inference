@@ -4,6 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8GB
 #SBATCH --time=01:00:00
+#SBATCH --partition=lowprio
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
 

@@ -4,6 +4,7 @@
 #SBATCH --mem=1GB
 #SBATCH --time=00:01:00
 #SBATCH --output=%j.out
+#SBATCH --partition=lowprio
 
 # __Author__: Tannon Kew (kew@cl.uzh.ch)
 

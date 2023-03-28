@@ -6,7 +6,7 @@
     "gpu_type": "T4",
     "mem": "20GB",
     "time": "01:00:00",
-    "model_name_or_path": "google/t5-v1_1-base",
+    "model_name_or_path": "google/t5-base-lm-adapt",
     "is_encoder_decoder": true,
     "max_new_tokens": 100,
     "max_memory": 1.0,

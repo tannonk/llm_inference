@@ -312,14 +312,14 @@ if __name__ == "__main__":
     # Evaluate     
     if s_args.do_evaluation: 
 
-        if not Path(output_file).exists():
-            raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
-
         # infer output file path
         eval_file = get_output_file_name(i_args, ext=".eval") if not s_args.eval_file else s_args.eval_file
 
         # check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
+        
+            if not Path(output_file).exists():
+                raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
 
             prefix = 'bash ' # will execute the directly
 

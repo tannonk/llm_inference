@@ -5,6 +5,7 @@
 #SBATCH --mem-per-cpu=1G
 #SBATCH --array=0-1
 #SBATCH --output=inf.par.%A.%a.out
+#SBATCH --partition=lowprio
 
 # Author: T. Kew
 # sbatch jobs/run_inference_parallel.sh
