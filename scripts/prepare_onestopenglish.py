@@ -34,7 +34,7 @@ import json
 from pathlib import Path
 from utils.helpers import *
 
-data_dir = Path("data/onestopenglish/Sentence-Aligned/")
+data_dir = Path("resources/data/onestopenglish/Sentence-Aligned/")
 
 # OneStopEnglishCorpus/Sentence-Aligned/ADV-ELE.txt
 

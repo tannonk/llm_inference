@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     test()
 
-    # dataset = "data/asset/dataset/asset.valid.jsonl"
+    # dataset = "resources/data/asset/dataset/asset.valid.jsonl"
     # few_shot_n = 3
     # n_refs = 2
     # random.seed(42)

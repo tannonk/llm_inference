@@ -198,10 +198,10 @@ if __name__ == '__main__':
     for c in specials:
         exclude.add(c)
 
-    all_testfile = 'data/newsela-auto/newsela-manual/all/test.tsv'
-    all_valfile = 'data/newsela-auto/newsela-manual/all/dev.tsv'
+    all_testfile = 'resources/data/newsela-auto/newsela-manual/all/test.tsv'
+    all_valfile = 'resources/data/newsela-auto/newsela-manual/all/dev.tsv'
     files = {'all_test': all_testfile, 'all_val': all_valfile}
-    out_dir = 'data/newsela-auto'
+    out_dir = 'resources/data/newsela-auto'
     for k, file in files.items():
         outname = f'news_manual_{k}.jsonl'
         all_pairs = []

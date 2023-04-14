@@ -34,7 +34,7 @@ import json
 from pathlib import Path
 from utils.helpers import *
 
-data_dir = Path("data/asset/dataset")
+data_dir = Path("resources/data/asset/dataset")
 
 def gather_complex_simple_sentences(split):
     dataset = []

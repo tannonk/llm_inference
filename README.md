@@ -10,6 +10,11 @@ To set up the environment, run the following commands:
 # create a directory for source code
 mkdir installs
 
+# create a directory for data, models, outputs, etc.
+mkdir -p resources/data resources/outputs resources/models
+# or alternatively, create a symlink
+ln -s <path_to_storage> resources
+
 # if working on slurm cluster, load relevant modules
 ml multigpu anaconda3
 
@@ -62,7 +67,7 @@ cd ../..
 ## Data
 
 To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_datasets.sh`. 
-This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
+This script downloads the raw data for publicly available datasets and writes the files to the `resources/data/` directory.
 
 ```bash
 bash scripts/fetch_datasets.sh
@@ -91,11 +96,11 @@ python -m inference \
 	--num_return_sequences 1 \
 	--do_sample True \
 	--top_p 0.9 \
-	--input_file "data/asset/dataset/asset.test.jsonl" \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
+	--input_file "resources/data/asset/dataset/asset.test.jsonl" \
+	--examples "resources/data/asset/dataset/asset.valid.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--output_dir "data/outputs" \
+	--output_dir "resources/outputs" \
 	--prompt_json "prompts/p0.json"
 ```
 
@@ -118,11 +123,11 @@ python -m torch.distributed.run \
 	--max_new_tokens 100 \
 	--batch_size 8 \
 	--top_p 0.9 \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
-	--input_file "data/asset/dataset/asset.test.head10.jsonl" \
+	--examples "resourcesdata/asset/dataset/asset.valid.jsonl" \
+	--input_file "resourcesdata/asset/dataset/asset.test.head10.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--output_dir "data/outputs" \
+	--output_dir "resources/outputs" \
 	--prompt_json "prompts/p0.json"
 ```
 
@@ -138,11 +143,11 @@ Running models can be done, for example, with the following command:
 ```bash
 python -m inference_API_models \
 --model_name_or_path cohere-command-xlarge-nightly \
---input_file "data/examples/asset.test.h10.jsonl" \
---examples "data/examples/asset.valid.h10.jsonl" \
+--input_file "resources/data/asset/dataset/asset.test.jsonl" \
+--examples "resources/data/asset/dataset/asset.valid.jsonl" \
 --n_refs 1 \
 --few_shot_n 3 \
---output_dir "data/outputs" \
+--output_dir "resources/outputs" \
 --prompt_json "prompts/p0.json"
 ```
 
@@ -196,9 +201,10 @@ python -m run \
     --batch_size 8 \
     --seed 489 \
     --model_name_or_path bigscience/bloom-560m \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/data/asset/dataset/asset.test.jsonl \
+    --prompt_json prompts/p0.json \
+	--n_refs 1 --few_shot_n 3
 ```
 
 Alternatively, you can also pass a json file in position 1 with some or all of the arguments predefined. For example, on a server with RTX 3090 (24GB) GPUs, you could use the following:
@@ -206,9 +212,10 @@ Alternatively, you can also pass a json file in position 1 with some or all of t
 ```bash
 python -m run exp_configs/rtx/bloom-560m.json \
     --seed 489 \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/data/asset/dataset/asset.test.jsonl \
+    --prompt_json prompts/p0.json \
+	--n_refs 1 --few_shot_n 3
 ```
 
 This script will produce the following files to help track experiments:

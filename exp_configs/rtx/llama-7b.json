@@ -6,7 +6,7 @@
     "gpu_type": "T4",
     "mem": "40GB",
     "time": "01:00:00",
-    "model_name_or_path": "models/LLAMA/llama-7b",
+    "model_name_or_path": "resources/models/LLAMA/llama-7b",
     "max_new_tokens": 100,
     "max_memory": 1.0,
     "batch_size": 8

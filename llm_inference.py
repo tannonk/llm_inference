@@ -74,7 +74,7 @@ class InferenceArguments:
     )
 
     offload_folder: str = field(
-        default="data/offload/",
+        default="resources/offload/",
         metadata={"help": "directory path for offloading"}
     )
 
@@ -189,7 +189,7 @@ class InferenceArguments:
     )
 
     output_dir: str = field(
-        default="data/outputs/",
+        default="resources/outputs/",
         metadata={"help": "Path to output directory"}
     )
 
