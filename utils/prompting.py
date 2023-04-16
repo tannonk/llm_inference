@@ -192,7 +192,11 @@ def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], examp
 
             # step 4. if multiple references are provided for each prompt example, the model may replicate this pattern
             # currently assumes multiple references are simply enumerated, e.g. 0: ... 1: ...
-            out_seq = [x.strip() for x in re.split(r'\d:', out_seq) if x.strip()][0]
+            try:
+                out_seq = [x.strip() for x in re.split(r'\d:', out_seq) if x.strip()][0]
+            except IndexError:
+                # if the output is empty, we output a dummy string to avoid errors downstream
+                out_seq = '####'
 
             # step 5. remove extraenous task-specific delims            
             out_seq = re.sub(r'\s+Simple:\s+', '', out_seq)

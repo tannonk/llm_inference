@@ -92,6 +92,7 @@ if __name__ == '__main__':
 
     data_dir = Path('resources/outputs/')
 
+    c = 0
     for model_dir in data_dir.iterdir():
         if model_dir.name.lower() in configs:
             # logger.info(f'{bcolors.OKBLUE}Checking {model_dir} {bcolors.ENDC}')
@@ -103,8 +104,11 @@ if __name__ == '__main__':
             check_log_file(filepath)            
             outputs_file = filepath.with_suffix('.jsonl')
             line_count(outputs_file)
+            c += 1
     
     # if there are any configs left, they have not been run yet
     if len(configs) > 0:
         for config in configs:
             logger.warning(f'{bcolors.WARNING}No output dir found for {config} {bcolors.ENDC}')
+
+    logger.info(f'{bcolors.OKGREEN}Checked {c} log files {bcolors.ENDC}')
