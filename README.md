@@ -80,6 +80,8 @@ For example, to prepare ASSET, run
 python -m scripts.prepare_asset
 ```
 
+See the [readme](./scripts/README.md) for more details on the format.
+
 ## Examples
 
 #### Hugging Face Models
@@ -184,7 +186,7 @@ Prompts can be defined on-the-fly at inference time by passing the relevant argu
 ```
 
 However, for reproducibility, we recommend using pre-defined prompts. These contain these relevant fields and easily be used for inference by passing them with the `--prompt_json` argument.
-The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format.
+The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format. See the [readme](./prompts/README.md) for more details.
 
 #### Experiments
 

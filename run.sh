@@ -21,19 +21,24 @@ echo ""
 
 # iterate through array using a counter
 # for seed in 489 287 723; do
-for seed in 287 723; do
+for prompt_id in p1 p2; do
     echo ""
-    echo "### SEED $seed ###"
+        echo "### PROMPT ID $prompt_id ###"
     echo ""
-    for ((i=0; i<${#model_config_files[@]}; i++)); do
+    for seed in 489 287 723; do
         echo ""
-        echo "### $i ${model_config_files[$i]} ###"
+        echo "### SEED $seed ###"
+        echo ""
+        for ((i=0; i<${#model_config_files[@]}; i++)); do
+            echo ""
+            echo "### $i ${model_config_files[$i]} ###"
 
-        python -m run "${model_config_files[$i]}" \
-            --seed $seed \
-            --input_file $DATA_DIR/asset/dataset/asset.test.jsonl \
-            --examples $DATA_DIR/asset/dataset/asset.valid.jsonl \
-            --prompt_json prompts/p0.json \
-            --n_refs 1 --few_shot_n 3
+            python -m run "${model_config_files[$i]}" \
+                --seed $seed \
+                --input_file $DATA_DIR/asset/dataset/asset.test.jsonl \
+                --examples $DATA_DIR/asset/dataset/asset.valid.jsonl \
+                --prompt_json prompts/$prompt_id.json \
+                --n_refs 1 --few_shot_n 3
+        done
     done
 done

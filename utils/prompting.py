@@ -182,10 +182,10 @@ def postprocess_model_outputs(inputs: List[str], outputs: List[List[str]], examp
             split_out_seq = out_seq.split(example_separator) # e.g. '\n\n' if used as example_separator in prompt and to allow cuting off after the first example
             # split_out_seq = re.split(example_separator, out_seq, 1)
 
-            if len(split_out_seq) == 1:
-                # inform that output is either doesn't contain the example delimiter. This can be an indicator 
-                # of a well-formed output or that they may need to increase `--max_new_tokens` for the task.
-                logger.info(f"Well-formed or truncated output: no delimiter {repr(example_separator)} found in output sequence.")
+            # if len(split_out_seq) == 1:
+            #     # inform that output is either doesn't contain the example delimiter. This can be an indicator 
+            #     # of a well-formed output or that they may need to increase `--max_new_tokens` for the task.
+            #     logger.info(f"Well-formed or truncated output: no delimiter {repr(example_separator)} found in output sequence.")
 
             # step 3. remove extraneous newlines chars
             out_seq = re.sub(r'\n', ' ', split_out_seq[0])
