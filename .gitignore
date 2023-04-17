@@ -27,6 +27,8 @@ models
 # experiments
 logs/
 scratch/
+*.log
+*.out
 
 # api keys
 private/
