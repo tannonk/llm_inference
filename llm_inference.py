@@ -224,6 +224,26 @@ class InferenceArguments:
                           "See description in prompt_utils.py."}
     )
 
+    example_selector: str = field(
+        default="random",
+        metadata={"help": "Method for selecting examples from examples file."}
+    )
+
+    example_selector_mode: str = field(
+        default="min",
+        metadata={"help": "Method for ordering examples used in a prompt (only used if example_selector is 'sem_sim')."}
+    )
+
+    example_selector_model_name: str = field(
+        default="all-mpnet-base-v2",
+        metadata={"help": "Name of SentenceTransformers model to use for semantic similarity (only used if example_selector is 'sem_sim')."}
+    )
+
+    example_selector_save_dir: str = field(
+        default="data/embeddings",
+        metadata={"help": "Path to stored embeddings (only used if example_selector is 'sem_sim')."}
+    )
+
     example_separator: str = field(
         default=r"\n\n",
         metadata={"help": "Delimiter for prompts and generated text"}
