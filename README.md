@@ -230,7 +230,7 @@ This script will produce the following files to help track experiments:
 
 ## Results
 
-We have run a list of experiments to test simplification models on current models and datasets. The experiments' results can be seen in a [summarised format](https://github.com/tannonk/llm_simplification_results/tree/main/data/reports/summary) and [full format](https://github.com/tannonk/llm_simplification_results/tree/main/data/reports/full).
+We have run a list of experiments to test simplification models on current models and datasets. The experiments' results can be seen in a [summarised format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/summary) and [full format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/full).
 Please contact Tannon Kew (Slack) to get access to this repo.
 
 ## Limitations & Known Issues
@@ -240,4 +240,4 @@ Please contact Tannon Kew (Slack) to get access to this repo.
 
 ## TODOs
 
-You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/tree/main/data/results/checklist.md). Feel free to suggest any new setting, model or dataset.
+You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/data/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
