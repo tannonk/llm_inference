@@ -183,6 +183,14 @@ def print_results(checklist):
     )
     writer.dump(outfile)
 
+    with open(f"{path}/checklist.csv", "w") as f:
+        for c in checklist:
+            index = len(c)-1
+            c[index] = c[index].replace(":white_check_mark:", "Yes")
+            c[index] = c[index].replace(":heavy_multiplication_x:", "No")
+            f.write(f"{','.join(c)}\n")
+
+
 
 def main():
     create_checklist()
