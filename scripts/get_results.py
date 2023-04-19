@@ -126,7 +126,9 @@ def save_with_format(path, df, tag):
     df = df.reset_index().round(2)
 
     for metric in ["sari", "fkgl", "F1_bert_ref"]:
-        df = df.sort_values(by=metric, ascending=False)
+
+        sorting_asc = "fkgl" in metric
+        df = df.sort_values(by=metric, ascending=sorting_asc)
         df.to_csv(f"{path}/{tag}_results_by_{metric}.csv".lower(), index=False)
 
 
