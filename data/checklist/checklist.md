@@ -1,4 +1,3 @@
-# LLM Simplification Checklist
 |      Model      |   Test   |Train (few-shot)|# samples|Prompt|# Ref|Seed|         Done?          |
 |-----------------|----------|----------------|--------:|------|----:|---:|------------------------|
 |bloom            |asset-test|asset-valid     |        3|p0    |    1| 287|:white_check_mark:      |

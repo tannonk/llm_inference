@@ -178,7 +178,6 @@ def print_results(checklist):
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
-        table_name="LLM Simplification Checklist",
         headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Done?"],
         value_matrix=checklist,
     )
