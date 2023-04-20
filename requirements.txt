@@ -12,3 +12,4 @@ sentencepiece==0.1.97
 jsonlines
 cohere==3.10.0
 openai==0.27.2
+pytablewriter==0.64.2

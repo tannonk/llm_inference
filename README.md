@@ -228,6 +228,11 @@ This script will produce the following files to help track experiments:
     - `<output_file>.eval`: Log file of the automatic evaluation with results. 
 
 
+## Results
+
+We have run a list of experiments to test simplification models on current models and datasets. The experiments' results can be seen in a [summarised format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/summary) and [full format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/full).
+Please contact Tannon Kew (Slack) to get access to this repo.
+
 ## Limitations & Known Issues
 
 - LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
@@ -235,10 +240,4 @@ This script will produce the following files to help track experiments:
 
 ## TODOs
 
-- [ ] Task-specific prompts
-- [ ] Datasets and data prep
-	- [x] Newsela
-	- [x] Hsplit
-	- [ ] Medical
-	- [ ] Legal (?)
-- [ ] Detailed evaluation
+You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/data/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
