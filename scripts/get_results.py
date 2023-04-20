@@ -28,8 +28,8 @@ import pandas as pd
 from pytablewriter import MarkdownTableWriter
 
 EXP_TO_RUN = "exp_configs/rtx"  # Configuration templates for running experiments
-EXP_READY = "data/llm_simplification_results"  # Results from the configuration templates
-REPORTS_OUT = "data/llm_simplification_results/reports"
+EXP_READY = "resources/outputs/"  # Results from the configuration templates
+REPORTS_OUT = "resources/outputs/reports"
 
 # Headers renaming for sharing
 HEADERS_NAMES = {
@@ -126,7 +126,6 @@ def save_with_format(path, df, tag):
     df = df.reset_index().round(2)
 
     for metric in ["sari", "fkgl", "F1_bert_ref"]:
-
         sorting_asc = "fkgl" in metric
         df = df.sort_values(by=metric, ascending=sorting_asc)
         df.to_csv(f"{path}/{tag}_results_by_{metric}.csv".lower(), index=False)
@@ -187,11 +186,10 @@ def print_results(checklist):
 
     with open(f"{path}/checklist.csv", "w") as f:
         for c in checklist:
-            index = len(c)-1
+            index = len(c) - 1
             c[index] = c[index].replace(":white_check_mark:", "Yes")
             c[index] = c[index].replace(":heavy_multiplication_x:", "No")
             f.write(f"{','.join(c)}\n")
-
 
 
 def main():
