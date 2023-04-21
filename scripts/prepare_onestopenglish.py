@@ -55,7 +55,7 @@ for level_sets in ["ADV-ELE", "ADV-INT", "ELE-INT"]:
     c = 0
     with open(outfile, "w", encoding="utf8") as outf:
         for src_line, tgt_line in zip(src_lines, tgt_lines):
-            d = {"complex": src_line, "simple": tgt_line}
+            d = {"complex": src_line, "simple": [tgt_line]}
             outf.write(f"{json.dumps(d, ensure_ascii=False)}\n")
             c += 1
     print(f"Wrote {c} items to {outfile}")

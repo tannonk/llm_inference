@@ -48,3 +48,13 @@ else
     echo "Dataset dir 'onestopenglish' already exists. Skipping..."
     echo ""
 fi
+
+
+plainenglishlegal_dir="$DATA_DIR/plainenglishlegal"
+if [[  ! -d "$plainenglishlegal_dir"  ]]; then
+    git clone https://github.com/lauramanor/legal_summarization $plainenglishlegal_dir
+else
+    echo ""
+    echo "Dataset dir 'plainenglishlegal' already exists. Skipping..."
+    echo ""
+fi
