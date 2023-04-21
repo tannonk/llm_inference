@@ -12,7 +12,7 @@ files available at https://github.com/lauramanor/legal_summarization.
 
 Example call:
 
-    python -m scripts.prepare_plainenglishcorpus
+    python -m scripts.prepare_plainenglish
 
 """
 
