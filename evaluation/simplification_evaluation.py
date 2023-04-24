@@ -14,15 +14,20 @@ If no source and reference files are provided, assumes source and reference sent
 Example call:
 
     python -m evaluation.simplification_evaluation \
-        data/outputs/bloom-560m/asset-test-head12_asset-valid_69e6d564-prefix-initial_3_1_42.jsonl
+        resources/outputs/bloom-560m/asset-test_asset-valid_p0_fs3_nr1_s489.jsonl \
+        --use_cuda \
+        --lens_model_path resources/LENS/checkpoints/epoch=5-step=6102.ckpt \
+        --out_file resources/outputs/bloom-560m/asset-test_asset-valid_p0_fs3_nr1_s489.eval
 
 optional:
-    --src_file e.g. data/asset/dataset/asset.test.jsonl
-    --ref_file e.g. data/asset/dataset/asset.test.simp.4
+    --src_file e.g. resources/data/asset/dataset/asset.test.jsonl
+    --ref_file e.g. resources/data/asset/dataset/asset.test.simp.4
     --use_cuda
+    --lens_model_path e.g. resources/LENS/checkpoints/epoch=5-step=6102.ckpt
 
 """
 
+import os
 import random
 import logging
 import argparse
@@ -33,10 +38,14 @@ from tqdm import tqdm
 import pandas as pd
 import torch # for bertscore
 from easse import sari, bleu, fkgl, bertscore, quality_estimation # samsa fails dep: tupa
+import lens
+from lens.lens_score import LENS # https://github.com/Yao-Dou/LENS/tree/master/lens
 
 from evaluation.distinct_n import distinct
 from evaluation.perplexity import score_ppl
 from utils.helpers import iter_lines
+
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8' # hack required for LENS 
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +56,7 @@ def set_args():
     parser.add_argument('--ref_file', type=str, required=False, help='Path to a TXT file with reference sentences. WARING: assumes only one reference set.')
     parser.add_argument('--out_file', type=str, required=False, help='Path to a CSV file with metric scores.')
     parser.add_argument('--use_cuda', action='store_true', help='if provided, model-based metrics such as PPL and BERTScore will be computed on GPU.')
+    parser.add_argument('--lens_model_path', type=str, required=False, default='resources/LENS/checkpoints/epoch=5-step=6102.ckpt', help='Path to a LENS model (see https://github.com/Yao-Dou/LENS/tree/master/lens)')
     return parser.parse_args()
 
 def normalise(scores: Iterable[float]) -> List[float]:
@@ -58,6 +68,7 @@ def compute_metrics(
     ref_sents: List[List[str]], 
     hyp_sents: List[str],
     use_cuda: bool = False,
+    lens_model_path: Optional[str] = None,
     ):
     
     results = {}
@@ -72,7 +83,7 @@ def compute_metrics(
     results['ppl_mean'], results['ppl_std'] = None, None
 
     if not torch.cuda.is_available() or not use_cuda:
-        logger.warning('Cuda not in use. Skipping PPL and BERTScore!')
+        logger.warning('Cuda not in use. Skipping PPL and BERTScore and LENS!')
     else:
         logger.info('Using cuda to compute PPL')
         
@@ -82,6 +93,21 @@ def compute_metrics(
         # the easse bertscore implementation expext refs_sents to be a 2D list with shape [# ref sets, # refs]
         results['pbert_ref'], results['rbert_ref'], results['fbert_ref'] = normalise(bertscore.corpus_bertscore(hyp_sents, refs_sents))
         results['pbert_src'], results['rbert_src'], results['fbert_src'] = normalise(bertscore.corpus_bertscore(hyp_sents, [src_sents]))
+
+        # lens
+        if lens_model_path:
+            try:
+                lens_metric = LENS(lens_model_path, rescale=True)
+                # LENS expects refs to be shape [# samples, # refs]
+                refs_sents_ = list(map(list, zip(*refs_sents)))
+
+                lens_scores = lens_metric.score(src_sents, hyp_sents, refs_sents_, batch_size=16, gpus=1)
+                results['lens'] = np.mean(lens_scores)
+                results['lens_std'] = np.std(lens_scores)
+            except Exception as e:
+                logger.warning(f'LENS failed with error: {e}')
+                results['lens'] = None
+                results['lens_std'] = None
 
     # distinct    
     results['intra_dist1'], results['intra_dist2'], results['inter_dist1'], results['inter_dist2'] = normalise(distinct(hyp_sents))
@@ -119,7 +145,7 @@ if __name__ == '__main__':
     if len(src_sents) != len(hyp_sents):
         raise ValueError('Number of source sentences does not match number of hypothesis sentences')
 
-    results = compute_metrics(src_sents, refs_sents, hyp_sents, use_cuda=args.use_cuda)
+    results = compute_metrics(src_sents, refs_sents, hyp_sents, use_cuda=args.use_cuda, lens_model_path=args.lens_model_path)
 
     # add file id
     results['file_id'] = args.hyp_file
