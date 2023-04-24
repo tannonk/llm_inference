@@ -38,28 +38,22 @@ CUDA_VERSION=116 make cuda11x
 python setup.py install
 cd ../..
 
-# # install promptsource from source
-# git clone https://github.com/bigscience-workshop/promptsource.git installs/promptsource
-# cd installs/promptsource
-# pip install -e .
-
-# for inference with LlaMa, install the relevant package from source
-git clone https://github.com/facebookresearch/llama.git installs/llama
-cd installs/llama
-pip install -r requirements.txt
-pip install -e .
-cd ../..
-
 # install other deps
 pip install -r requirements.txt
 
 # check the install and CUDA dependencies
 python -m bitsandbytes
 
+# For evaluation purposes, we also require the following packages
 git clone https://github.com/feralvam/easse.git installs/easse
 cd installs/easse
 pip install -e .
 cd ../..
+
+git clone https://github.com/Yao-Dou/LENS.git installs/LENS
+cd LENS/lens
+pip install -e .
+cd ../../..
 
 ```
 
