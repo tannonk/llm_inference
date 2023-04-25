@@ -240,7 +240,7 @@ class InferenceArguments:
     )
 
     example_selector_save_dir: str = field(
-        default="data/embeddings",
+        default="resources/embeddings",
         metadata={"help": "Path to stored embeddings (only used if example_selector is 'sem_sim')."}
     )
 
