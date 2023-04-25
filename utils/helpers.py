@@ -132,6 +132,8 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
     
     examples = re.sub("[\.\_]", "-", Path(args.examples).stem) # data/asset/dataset/asset.valid -> asset-valid
     
+    example_selector = re.sub("[\_]", "-", args.example_selector).lower() if args.example_selector is not None else "random"
+    
     if args.prompt_json is not None:
         prompt_id = re.sub("[\.\_]", "-", Path(args.prompt_json).stem) # prompts/ex1.json-> ex1
     else: # generate an on-the-fly 'prompt id' based on the prompt prefix and format used
@@ -143,6 +145,7 @@ def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
 
     output_file = Path(f"{args.output_dir}") / f"{model_name}" / f"{test_set}_{examples}_" \
                                                                 f"{prompt_id}_" \
+                                                                f"{example_selector}_" \
                                                                 f"fs{args.few_shot_n}_" \
                                                                 f"nr{args.n_refs}_" \
                                                                 f"s{args.seed}{ext}"

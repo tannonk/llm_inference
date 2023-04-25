@@ -81,6 +81,7 @@ def compute_metrics(
     results['pbert_ref'], results['rbert_ref'], results['fbert_ref'] = None, None, None
     results['pbert_src'], results['rbert_src'], results['fbert_src'] = None, None, None
     results['ppl_mean'], results['ppl_std'] = None, None
+    results['lens'], results['lens_std'] = None, None
 
     if not torch.cuda.is_available() or not use_cuda:
         logger.warning('Cuda not in use. Skipping PPL and BERTScore and LENS!')
@@ -106,9 +107,7 @@ def compute_metrics(
                 results['lens_std'] = np.std(lens_scores)
             except Exception as e:
                 logger.warning(f'LENS failed with error: {e}')
-                results['lens'] = None
-                results['lens_std'] = None
-
+                
     # distinct    
     results['intra_dist1'], results['intra_dist2'], results['inter_dist1'], results['inter_dist2'] = normalise(distinct(hyp_sents))
 
@@ -118,32 +117,55 @@ def compute_metrics(
 
     return results
 
-if __name__ == '__main__':
-
-    args = set_args()
-
-    lines = list(iter_lines(args.hyp_file))
-
-    hyp_sents = [i['model_output'] for i in lines]
-
-    if not args.src_file and not args.ref_file: # assumes src and human refs are in hyp file
-        src_sents = [i['source'] for i in lines]
-        refs_sents = [i['references'] for i in lines]
-        refs_sents = list(map(list, [*zip(*refs_sents)])) # transpose from [# samples, # refs] to [# refs, # samples]
-    elif args.src_file and not args.ref_file: # assumes human refs are in src file
+def load_data(args):
+    """
+    Load data from files.
+    
+    Input files may be in jsonl or txt/tsv format.
+    """
+    # model outputs can be in jsonl or txt format
+    if args.hyp_file.endswith('.txt') or args.hyp_file.endswith('.tsv'):
+        hyp_sents = list(iter_lines(args.hyp_file))
+    elif args.hyp_file.endswith('.jsonl'):
+        lines = list(iter_lines(args.hyp_file))
+        hyp_sents = [i['model_output'] for i in lines]
+    
+    # simplest case: if src and ref files are provided, load them
+    if args.src_file and args.ref_file:
+        logger.info(f'Loading src_file {args.src_file}')
+        src_sents = list(iter_lines(args.src_file))
+        logger.info(f'Loading ref_file {args.ref_file}')
+        refs_sents = [list(iter_lines(args.ref_file))]
+    
+    # if only src file is provided, assume that human refs are also int the src file
+    elif args.src_file and not args.ref_file:
+        logger.info(f'No ref_file provided. Assuming that src and refs are in src_file {args.src_file}')
         lines = list(iter_lines(args.src_file))
         src_sents = [i['complex'] for i in lines]
         refs_sents = [i['simple'] for i in lines]
-        refs_sents = list(map(list, [*zip(*refs_sents)])) # transpose from [# samples, # refs] to [# refs, # samples]
-    elif args.src_file and args.ref_file: # assumes single set of human refs are in ref file
-        src_sents = list(iter_lines(args.src_file))
-        refs_sents = [list(iter_lines(args.ref_file))]
+    
+    # otherwise, if no src file and no ref file are provided, assume src and human refs are in hyp file (jsonl format)
+    elif not args.src_file and not args.ref_file:
+        logger.info(f'No src_file or ref_file provided. Assuming that src and refs are in hyp_file {args.hyp_file}')
+        lines = list(iter_lines(args.hyp_file))
+        src_sents = [i['source'] for i in lines]
+        refs_sents = [i['references'] for i in lines]
+
+    refs_sents = list(map(list, [*zip(*refs_sents)])) # transpose from [# samples, # refs_per_sample] to [# refs_per_sample, # samples]
     
     # sanity checks
     if len(src_sents) != len(refs_sents[0]):
         raise ValueError('Number of source sentences does not match number of reference sentences')
     if len(src_sents) != len(hyp_sents):
         raise ValueError('Number of source sentences does not match number of hypothesis sentences')
+
+    return src_sents, refs_sents, hyp_sents
+
+if __name__ == '__main__':
+
+    args = set_args()
+    
+    src_sents, refs_sents, hyp_sents = load_data(args)
 
     results = compute_metrics(src_sents, refs_sents, hyp_sents, use_cuda=args.use_cuda, lens_model_path=args.lens_model_path)
 

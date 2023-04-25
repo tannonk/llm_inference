@@ -68,6 +68,7 @@ class SimilarExampleSelector(BaseExampleSelector):
         self.save_dir = Path(save_dir)
         self.model = SentenceTransformer(model_name)
 
+
         # get a unique id for the example set, which will be used to save the embeddings for later use
         example_set_id = self._get_example_set_id()
         
@@ -152,8 +153,9 @@ class SimilarExampleSelector(BaseExampleSelector):
         """Select which examples to use based on the inputs.""" 
 
         if self.few_shot_n == 0:
-            raise ValueError("Few-shot examples must be greater than 0 when using the SimilarExampleSelector")
-
+            logger.warning(f'Few-shot examples is set to 0. Returning empty list!')
+            return ''
+        
         ex_inds, ex_scores = zip(*self.fetch_most_similar(input_variables['input'], self.embed_sentences, self.embeddings, top_k=self.few_shot_n))
 
         if self.mode == 'max':

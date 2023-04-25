@@ -13,7 +13,7 @@ Results repo (https://github.com/tannonk/llm_simplification_results/) should be 
 
 Example usage:
 
-    python -m scripts.create_checklist
+    python -m scripts.get_results
 
 """
 
@@ -22,14 +22,18 @@ import itertools
 import os
 import re
 from pathlib import Path
+import argparse
 
 import numpy as np
 import pandas as pd
 from pytablewriter import MarkdownTableWriter
 
-EXP_TO_RUN = "exp_configs/rtx"  # Configuration templates for running experiments
-EXP_READY = "resources/outputs/"  # Results from the configuration templates
-REPORTS_OUT = "resources/outputs/reports"
+# user defined args
+parser = argparse.ArgumentParser()
+parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN", help="Path to model configuration templates for running experiments")
+parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY", help="Path to results from the configuration templates")
+parser.add_argument("--reports_dir", type=str, default="reports/", dest="REPORTS_OUT", help="Path to reports")
+args = parser.parse_args()
 
 # Headers renaming for sharing
 HEADERS_NAMES = {
@@ -42,18 +46,21 @@ HEADERS_NAMES = {
     "prompt": "Prompt",
     "fbert_ref": "F1_bert_ref",
     "fbert_src": "F1_bert_src",
+    "lens": "LENS",
+    "lens_std": "LENS_std",
     "Compression ratio": "c_ratio",
     "Sentence splits": "splits",
     "Levenshtein similarity": "lev_sim",
     "Exact copies": "copies",
     "Additions proportion": "adds",
     "Deletions proportion": "deletes",
-    "Lexical complexity score": "lex_complexity"}
+    "Lexical complexity score": "lex_complexity"
+}
 
 
 def get_results():
     # Check if the test set exists and has the same amount of lines
-    files = glob.glob(f"{EXP_READY}/*/*eval")
+    files = glob.glob(f"{args.EXP_READY}/*/*eval")
     files = [file for file in files if "dummy" and "t5-v1-1" not in file]
     output = []
     for file in files:
@@ -81,16 +88,24 @@ def get_filtered_files(files):
 
 def get_initial_params(file):
     model = Path(file).parent.name
-    test, example, prompt, few_n, refs, seed = Path(file).name.split("_")
+    hps = Path(file).name.split("_")
+    if len(hps) == 6:
+        test, example, prompt, few_n, refs, seed = hps
+        ex_selector = "random"
+    elif len(hps) == 7:
+        test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
+    else:
+        raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
+    
     few_n = few_n.replace("fs", "")
     refs = refs.replace("nr", "")
     seed = re.search(r'\d+', seed).group()
 
-    return [model, test, example, few_n, prompt, refs, seed]
+    return [model, test, example, few_n, prompt, refs, seed, ex_selector]
 
 
 def get_columns(file_headers):
-    columns = ["model", "test", "example", "few_n", "prompt", "refs", "seed"]
+    columns = ["model", "test", "example", "few_n", "prompt", "refs", "seed", "ex_selector"]
     formatted_columns = []
     columns.extend(file_headers)
     for c in columns:
@@ -102,7 +117,7 @@ def get_columns(file_headers):
 
 
 def setup_save(tag):
-    results_path = [REPORTS_OUT, f"{REPORTS_OUT}/full", f"{REPORTS_OUT}/summary", f"{REPORTS_OUT}/raw",
+    results_path = [args.REPORTS_OUT, f"{args.REPORTS_OUT}/full", f"{args.REPORTS_OUT}/summary", f"{args.REPORTS_OUT}/raw",
                     "data/checklist/"]
     for p in results_path:
         if not Path(p).exists():
@@ -140,7 +155,7 @@ def save_with_format(path, df, tag):
 
 
 def create_checklist():
-    files = glob.glob(f"{EXP_READY}/*/*eval")  # Get the list of templates that are already run
+    files = glob.glob(f"{args.EXP_READY}/*/*eval")  # Get the list of templates that are already run
     files = get_filtered_files(files)
     parsed_results = []
     for file in files:
@@ -162,7 +177,7 @@ def create_checklist():
 
 
 def get_unique_params(parsed_results):
-    templates = glob.glob(f"{EXP_TO_RUN}/*")  # Get list of config files that are planned to be run
+    templates = glob.glob(f"{args.EXP_TO_RUN}/*")  # Get list of config files that are planned to be run
     templates = get_filtered_files(templates)
     templates = [Path(file).stem for file in templates]
 
