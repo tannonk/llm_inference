@@ -71,6 +71,7 @@ def get_results():
     final_df = pd.DataFrame.from_records(output, columns=columns)
     save_results_full(final_df)
     save_results_summary(final_df)
+    save_results_raw(final_df)
     return final_df
 
 
@@ -101,7 +102,8 @@ def get_columns(file_headers):
 
 
 def setup_save(tag):
-    results_path = [REPORTS_OUT, f"{REPORTS_OUT}/full", f"{REPORTS_OUT}/summary", "data/checklist/"]
+    results_path = [REPORTS_OUT, f"{REPORTS_OUT}/full", f"{REPORTS_OUT}/summary", f"{REPORTS_OUT}/raw",
+                    "data/checklist/"]
     for p in results_path:
         if not Path(p).exists():
             os.makedirs(p)
@@ -120,6 +122,12 @@ def save_results_summary(df):
     df = df[["Model", "Test", "Prompt", "s", "sari", "fkgl", "F1_bert_ref", "F1_bert_src", "lev_sim", "lex_complexity"]]
     df = df.groupby(["Model", "Test", "Prompt"]).mean()
     save_with_format(path, df, "summary")
+
+
+def save_results_raw(df, tag="raw"):
+    path = setup_save("raw")
+    df = df.round(2)
+    df.to_csv(f"{path}/{tag}_results.csv".lower(), index=False)
 
 
 def save_with_format(path, df, tag):
