@@ -81,7 +81,11 @@ class SubmitArguments:
         default=1,
         metadata={"help": "SLURM cpus-per-task"}
     )
-    
+
+    device_id: str = field(
+        default="auto",
+        metadata={"help": "GPU device ID. If set to `auto`, we automatically identify and select a free GPU"}   
+    )
 
     mem: str = field(
         default="12GB",
@@ -217,12 +221,16 @@ if __name__ == "__main__":
             prefix = 'bash '
 
             # Set GPU resources
-            avail_gpus = get_free_gpu_indices()
-            if len(avail_gpus) < s_args.n_gpus:
-                raise ValueError(f"Only {len(avail_gpus)} GPUs available, but {s_args.n_gpus} requested.")
+            if s_args.device_id == 'auto':
+
+                avail_gpus = get_free_gpu_indices()
+                if len(avail_gpus) < s_args.n_gpus:
+                    raise ValueError(f"Only {len(avail_gpus)} GPUs available, but {s_args.n_gpus} requested.")
+                else:
+                    avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
+                    prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
             else:
-                avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
-                prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
+                prefix = f'CUDA_VISIBLE_DEVICES={s_args.device_id} ' + prefix
 
             suffix = f'>| {log_file} 2>&1'
         
@@ -253,7 +261,6 @@ if __name__ == "__main__":
         else:
             script = 'slurm_scripts/run_inference_on_t4.sh '
 
-    
         args = f'--model_name_or_path "{i_args.model_name_or_path}" ' \
                     f'--is_encoder_decoder {i_args.is_encoder_decoder} ' \
                     f'--load_in_8bit {i_args.load_in_8bit} ' \
@@ -281,6 +288,10 @@ if __name__ == "__main__":
                     f'--prompt_template "{i_args.prompt_template}" ' \
                     f'--source_field "{i_args.source_field}" ' \
                     f'--target_field "{i_args.target_field}" ' \
+                    f'--example_selector "{i_args.example_selector}" ' \
+                    f'--example_selector_mode "{i_args.example_selector_mode}" ' \
+                    f'--example_selector_model_name "{i_args.example_selector_model_name}" ' \
+                    f'--example_selector_save_dir "{i_args.example_selector_save_dir}" ' \
                     f'--output_dir "{i_args.output_dir}" ' \
                     f'--output_file "{output_file}" '
 
@@ -324,12 +335,15 @@ if __name__ == "__main__":
             prefix = 'bash ' # will execute the directly
 
             # Set GPU resources
-            avail_gpus = get_free_gpu_indices()
-            if len(avail_gpus) < 1:
-                print("[!] No free GPUs. Will attempt to run on GPU 0...")
-                avail_gpus = ['0']
+            if s_args.device_id == 'auto':
+                avail_gpus = get_free_gpu_indices()
+                if len(avail_gpus) < 1:
+                    print("[!] No free GPUs. Will attempt to run on GPU 0...")
+                    avail_gpus = ['0']
+                else:
+                    prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
             else:
-                prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus[0]} ' + prefix
+                prefix = f'CUDA_VISIBLE_DEVICES={s_args.device_id} ' + prefix
 
             suffix = f'>> {log_file} 2>&1' # append to existing log file
 
