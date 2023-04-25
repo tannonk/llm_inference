@@ -10,6 +10,11 @@ To set up the environment, run the following commands:
 # create a directory for source code
 mkdir installs
 
+# create a directory for data, models, outputs, etc.
+mkdir -p resources/data resources/outputs resources/models
+# or alternatively, create a symlink
+ln -s <path_to_storage> resources
+
 # if working on slurm cluster, load relevant modules
 ml multigpu anaconda3
 
@@ -33,28 +38,22 @@ CUDA_VERSION=116 make cuda11x
 python setup.py install
 cd ../..
 
-# # install promptsource from source
-# git clone https://github.com/bigscience-workshop/promptsource.git installs/promptsource
-# cd installs/promptsource
-# pip install -e .
-
-# for inference with LlaMa, install the relevant package from source
-git clone https://github.com/facebookresearch/llama.git installs/llama
-cd installs/llama
-pip install -r requirements.txt
-pip install -e .
-cd ../..
-
 # install other deps
 pip install -r requirements.txt
 
 # check the install and CUDA dependencies
 python -m bitsandbytes
 
+# For evaluation purposes, we also require the following packages
 git clone https://github.com/feralvam/easse.git installs/easse
 cd installs/easse
 pip install -e .
 cd ../..
+
+git clone https://github.com/Yao-Dou/LENS.git installs/LENS
+cd LENS/lens
+pip install -e .
+cd ../../..
 
 ```
 
@@ -62,7 +61,7 @@ cd ../..
 ## Data
 
 To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_datasets.sh`. 
-This script downloads the raw data for publicly available datasets and writes the files to the `data/` directory.
+This script downloads the raw data for publicly available datasets and writes the files to the `resources/data/` directory.
 
 ```bash
 bash scripts/fetch_datasets.sh
@@ -74,6 +73,8 @@ For example, to prepare ASSET, run
 ```bash
 python -m scripts.prepare_asset
 ```
+
+See the [readme](./scripts/README.md) for more details on the format.
 
 ## Examples
 
@@ -91,11 +92,11 @@ python -m inference \
 	--num_return_sequences 1 \
 	--do_sample True \
 	--top_p 0.9 \
-	--input_file "data/asset/dataset/asset.test.jsonl" \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
+	--input_file "resources/data/asset/dataset/asset.test.jsonl" \
+	--examples "resources/data/asset/dataset/asset.valid.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--output_dir "data/outputs" \
+	--output_dir "resources/outputs" \
 	--prompt_json "prompts/p0.json"
 ```
 
@@ -118,11 +119,11 @@ python -m torch.distributed.run \
 	--max_new_tokens 100 \
 	--batch_size 8 \
 	--top_p 0.9 \
-	--examples "data/asset/dataset/asset.valid.jsonl" \
-	--input_file "data/asset/dataset/asset.test.head10.jsonl" \
+	--examples "resourcesdata/asset/dataset/asset.valid.jsonl" \
+	--input_file "resourcesdata/asset/dataset/asset.test.head10.jsonl" \
 	--n_refs 1 \
 	--few_shot_n 3 \
-	--output_dir "data/outputs" \
+	--output_dir "resources/outputs" \
 	--prompt_json "prompts/p0.json"
 ```
 
@@ -138,11 +139,11 @@ Running models can be done, for example, with the following command:
 ```bash
 python -m inference_API_models \
 --model_name_or_path cohere-command-xlarge-nightly \
---input_file "data/examples/asset.test.h10.jsonl" \
---examples "data/examples/asset.valid.h10.jsonl" \
+--input_file "resources/data/asset/dataset/asset.test.jsonl" \
+--examples "resources/data/asset/dataset/asset.valid.jsonl" \
 --n_refs 1 \
 --few_shot_n 3 \
---output_dir "data/outputs" \
+--output_dir "resources/outputs" \
 --prompt_json "prompts/p0.json"
 ```
 
@@ -179,7 +180,7 @@ Prompts can be defined on-the-fly at inference time by passing the relevant argu
 ```
 
 However, for reproducibility, we recommend using pre-defined prompts. These contain these relevant fields and easily be used for inference by passing them with the `--prompt_json` argument.
-The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format.
+The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON format. See the [readme](./prompts/README.md) for more details.
 
 #### Experiments
 
@@ -196,9 +197,10 @@ python -m run \
     --batch_size 8 \
     --seed 489 \
     --model_name_or_path bigscience/bloom-560m \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/data/asset/dataset/asset.test.jsonl \
+    --prompt_json prompts/p0.json \
+	--n_refs 1 --few_shot_n 3
 ```
 
 Alternatively, you can also pass a json file in position 1 with some or all of the arguments predefined. For example, on a server with RTX 3090 (24GB) GPUs, you could use the following:
@@ -206,9 +208,10 @@ Alternatively, you can also pass a json file in position 1 with some or all of t
 ```bash
 python -m run exp_configs/rtx/bloom-560m.json \
     --seed 489 \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
-    --prompt_json p0.json
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/data/asset/dataset/asset.test.jsonl \
+    --prompt_json prompts/p0.json \
+	--n_refs 1 --few_shot_n 3
 ```
 
 This script will produce the following files to help track experiments:
@@ -219,6 +222,11 @@ This script will produce the following files to help track experiments:
     - `<output_file>.eval`: Log file of the automatic evaluation with results. 
 
 
+## Results
+
+We have run a list of experiments to test simplification models on current models and datasets. The experiments' results can be seen in a [summarised format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/summary) and [full format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/full).
+Please contact Tannon Kew (Slack) to get access to this repo.
+
 ## Limitations & Known Issues
 
 - LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
@@ -226,10 +234,4 @@ This script will produce the following files to help track experiments:
 
 ## TODOs
 
-- [ ] Task-specific prompts
-- [ ] Datasets and data prep
-	- [x] Newsela
-	- [x] Hsplit
-	- [ ] Medical
-	- [ ] Legal (?)
-- [ ] Detailed evaluation
+You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/data/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.

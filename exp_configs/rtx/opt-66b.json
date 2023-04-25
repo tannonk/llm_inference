@@ -4,7 +4,7 @@
     "cpus_per_task": 1,
     "n_gpus": 7,
     "gpu_type": "A100",
-    "mem": "120GB",
+    "mem": "160GB",
     "time": "01:00:00",
     "model_name_or_path": "facebook/opt-66b",
     "max_new_tokens": 100,

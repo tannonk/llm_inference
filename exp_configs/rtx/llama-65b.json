@@ -6,7 +6,7 @@
     "gpu_type": "A100",
     "mem": "120GB",
     "time": "01:00:00",
-    "model_name_or_path": "models/LLAMA/llama-65b",
+    "model_name_or_path": "resources/models/LLAMA/llama-65b",
     "max_new_tokens": 100,
     "max_memory": 1.0,
     "batch_size": 4

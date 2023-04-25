@@ -9,10 +9,11 @@ set -e
 
 SCRIPTS_DIR=$(cd $(dirname -- $0); pwd)
 BASE="$SCRIPTS_DIR/.."
+DATA_DIR="$BASE/resources/data"
 
 cd $BASE
 
-asset_dir="$BASE/data/asset"
+asset_dir="$DATA_DIR/asset"
 if [[  ! -d "$asset_dir"  ]]; then
     git clone https://github.com/facebookresearch/asset.git $asset_dir
 else
@@ -21,7 +22,7 @@ else
     echo ""
 fi
 
-turkcorpus_dir="$BASE/data/turkcorpus"
+turkcorpus_dir="$DATA_DIR/turkcorpus"
 if [[  ! -d "$turkcorpus_dir"  ]]; then
     git clone https://github.com/cocoxu/simplification.git $turkcorpus_dir
 else
@@ -30,7 +31,7 @@ else
     echo ""
 fi
 
-hsplit_dir="$BASE/data/hsplit"
+hsplit_dir="$DATA_DIR/hsplit"
 if [[  ! -d "$hsplit_dir"  ]]; then
     git clone https://github.com/eliorsulem/HSplit-corpus.git $hsplit_dir
 else
@@ -39,11 +40,21 @@ else
     echo ""
 fi
 
-onestopenglish_dir="$BASE/data/onestopenglish"
+onestopenglish_dir="$DATA_DIR/onestopenglish"
 if [[  ! -d "$onestopenglish_dir"  ]]; then
     git clone https://github.com/nishkalavallabhi/OneStopEnglishCorpus.git $onestopenglish_dir
 else
     echo ""
     echo "Dataset dir 'onestopenglish' already exists. Skipping..."
+    echo ""
+fi
+
+
+plainenglishlegal_dir="$DATA_DIR/plainenglishlegal"
+if [[  ! -d "$plainenglishlegal_dir"  ]]; then
+    git clone https://github.com/lauramanor/legal_summarization $plainenglishlegal_dir
+else
+    echo ""
+    echo "Dataset dir 'plainenglishlegal' already exists. Skipping..."
     echo ""
 fi

@@ -22,16 +22,16 @@ python -m run \
     --batch_size 8 \
     --seed 489 \
     --model_name_or_path bigscience/bloom-560m \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/data/asset/dataset/asset.test.jsonl \
     --prompt_json prompts/p0.json
 
 Alternatively, you can pass a json file in position 1 with some or all of the arguments:
 
 python -m run exp_configs/bloom-560m.json \
     --seed 489 \
-    --examples data/asset/dataset/asset.valid.jsonl \
-    --input_file data/asset/dataset/asset.test.jsonl \
+    --examples resources/data/asset/dataset/asset.valid.jsonl \
+    --input_file resources/asset/dataset/asset.test.jsonl \
     --prompt_json prompts/p0.json \
     --n_refs 1 --few_shot_n 3
 

@@ -6,6 +6,7 @@ scratch/
 slurm-*
 *.out
 .idea/
+start.sh
 
 # API secrets
 api_secrets.py
@@ -26,3 +27,9 @@ models
 # experiments
 logs/
 scratch/
+*.log
+*.out
+
+# api keys
+private/
+resources

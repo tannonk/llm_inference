@@ -4,7 +4,7 @@
     "cpus_per_task": 1,
     "n_gpus": 1,
     "gpu_type": "A100",
-    "mem": "40GB",
+    "mem": "80GB",
     "time": "01:00:00",
     "model_name_or_path": "bigscience/T0",
     "is_encoder_decoder": true,

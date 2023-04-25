@@ -126,7 +126,7 @@ def iter_batches(file: Union[str, Path], batch_size: int = 3) -> Generator[Union
 def get_output_file_name(args: InferenceArguments, ext: str = ".jsonl") -> str:
     """Given all inference arguments, generate output filename for consistency"""
     
-    model_name = re.sub("[\.\_]", "-", Path(args.model_name_or_path).name) # 'bigscience/bloom-1b1 -> bloom-1b1
+    model_name = re.sub("[\_]", "-", Path(args.model_name_or_path).name).lower() # 'bigscience/bloom-1b1 -> bloom-1b1, T0pp -> t0pp
     
     test_set = re.sub("[\.\_]", "-", Path(args.input_file).stem) # data/asset/dataset/asset.test.orig -> asset-test
     
