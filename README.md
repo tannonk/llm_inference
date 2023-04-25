@@ -234,4 +234,4 @@ Please contact Tannon Kew (Slack) to get access to this repo.
 
 ## TODOs
 
-You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/data/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
+You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/reports/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
