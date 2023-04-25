@@ -117,8 +117,13 @@ def get_columns(file_headers):
 
 
 def setup_save(tag):
-    results_path = [args.REPORTS_OUT, f"{args.REPORTS_OUT}/full", f"{args.REPORTS_OUT}/summary", f"{args.REPORTS_OUT}/raw",
-                    "data/checklist/"]
+    results_path = [
+        args.REPORTS_OUT, 
+        f"{args.REPORTS_OUT}/full", 
+        f"{args.REPORTS_OUT}/summary", 
+        f"{args.REPORTS_OUT}/raw",
+        f"{args.REPORTS_OUT}/checklist/"
+    ]
     for p in results_path:
         if not Path(p).exists():
             os.makedirs(p)
