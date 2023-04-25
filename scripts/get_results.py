@@ -13,7 +13,7 @@ Results repo (https://github.com/tannonk/llm_simplification_results/) should be 
 
 Example usage:
 
-    python -m scripts.get_results
+    python -m scripts.get_results --reports_dir resources/outputs/reports --checklist_dir reports/
 
 """
 
@@ -30,9 +30,12 @@ from pytablewriter import MarkdownTableWriter
 
 # user defined args
 parser = argparse.ArgumentParser()
-parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN", help="Path to model configuration templates for running experiments")
-parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY", help="Path to results from the configuration templates")
-parser.add_argument("--reports_dir", type=str, default="reports/", dest="REPORTS_OUT", help="Path to reports")
+parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN",
+                    help="Path to model configuration templates for running experiments")
+parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY",
+                    help="Path to results from the configuration templates")
+parser.add_argument("--reports_dir", type=str, default="reports/", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
+parser.add_argument("--checklist_dir", type=str, default="reports/", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
 args = parser.parse_args()
 
 # Headers renaming for sharing
@@ -56,6 +59,19 @@ HEADERS_NAMES = {
     "Deletions proportion": "deletes",
     "Lexical complexity score": "lex_complexity"
 }
+
+SUMMARY_COLUMNS = ["Model", "Test", "Prompt", "s", "sari", "fkgl",
+                   "F1_bert_ref", "F1_bert_src", "LENS",
+                   "lev_sim", "lex_complexity"]
+
+SORT_BY_METRICS = ["sari", "fkgl", "F1_bert_ref", "LENS"]
+
+
+def validate_env():
+    if not Path(args.EXP_READY).exists():
+        raise Exception(f"Directory for results does not exist: {args.EXP_READY}")
+    if not Path(args.EXP_TO_RUN).exists():
+        raise Exception(f"Directory for model configurations does not exist: {args.EXP_TO_RUN}")
 
 
 def get_results():
@@ -96,7 +112,7 @@ def get_initial_params(file):
         test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
     else:
         raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
-    
+
     few_n = few_n.replace("fs", "")
     refs = refs.replace("nr", "")
     seed = re.search(r'\d+', seed).group()
@@ -118,11 +134,12 @@ def get_columns(file_headers):
 
 def setup_save(tag):
     results_path = [
-        args.REPORTS_OUT, 
-        f"{args.REPORTS_OUT}/full", 
-        f"{args.REPORTS_OUT}/summary", 
-        f"{args.REPORTS_OUT}/raw",
-        f"{args.REPORTS_OUT}/checklist/"
+        args.PRIVATE_REPORTS_OUT,
+        args.PUBLIC_REPORTS_OUT,
+        f"{args.PRIVATE_REPORTS_OUT}/full",
+        f"{args.PRIVATE_REPORTS_OUT}/summary",
+        f"{args.PRIVATE_REPORTS_OUT}/raw",
+        f"{args.PUBLIC_REPORTS_OUT}/checklist/"
     ]
     for p in results_path:
         if not Path(p).exists():
@@ -139,7 +156,7 @@ def save_results_full(df):
 
 def save_results_summary(df):
     path = setup_save("summary")
-    df = df[["Model", "Test", "Prompt", "s", "sari", "fkgl", "F1_bert_ref", "F1_bert_src", "lev_sim", "lex_complexity"]]
+    df = df[SUMMARY_COLUMNS]
     df = df.groupby(["Model", "Test", "Prompt"]).mean()
     save_with_format(path, df, "summary")
 
@@ -153,7 +170,7 @@ def save_results_raw(df, tag="raw"):
 def save_with_format(path, df, tag):
     df = df.reset_index().round(2)
 
-    for metric in ["sari", "fkgl", "F1_bert_ref"]:
+    for metric in SORT_BY_METRICS:
         sorting_asc = "fkgl" in metric
         df = df.sort_values(by=metric, ascending=sorting_asc)
         df.to_csv(f"{path}/{tag}_results_by_{metric}.csv".lower(), index=False)
@@ -207,7 +224,7 @@ def print_results(checklist):
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
-        headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Done?"],
+        headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Strategy", "Done?"],
         value_matrix=checklist,
     )
     writer.dump(outfile)
@@ -221,6 +238,7 @@ def print_results(checklist):
 
 
 def main():
+    validate_env()
     create_checklist()
     get_results()
 
