@@ -25,18 +25,19 @@ import json
 import random
 import logging
 import hashlib
+import numpy as np
 from pathlib import Path
-from typing import List, Dict, Iterable, Optional
+from typing import List, Dict, Iterable, Optional, Tuple
+import pickle
 
 from langchain import PromptTemplate, FewShotPromptTemplate
-from langchain.prompts import load_prompt
-from langchain.prompts.example_selector import LengthBasedExampleSelector
 from langchain.prompts.example_selector.base import BaseExampleSelector
 from langchain.prompts.example_selector.ngram_overlap import NGramOverlapExampleSelector
+from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import pytorch_cos_sim
 
 from utils.helpers import iter_lines, iter_batches, pretty_print_instance
 from llm_inference import InferenceArguments
-from utils.sem_sim import *
 
 logger = logging.getLogger(__name__)
 
@@ -103,15 +104,14 @@ class SimilarExampleSelector(BaseExampleSelector):
             data = pickle.load(f)
         return data['sentences'], data['embeddings']
 
-    @staticmethod
-    def encode_sentences(sentences: List[str], show_progress_bar: bool = True, embed_path: Optional[str] = None):
+    def encode_sentences(self, sentences: List[str], show_progress_bar: bool = True, embed_path: Optional[str] = None):
         """
         Encode sentences using the sentence transformer model and save the embeddings to a file for later use.
         """
-        embeddings = model.encode(sentences, show_progress_bar=True, convert_to_numpy=True)
+        embeddings = self.model.encode(sentences, show_progress_bar=show_progress_bar, convert_to_numpy=True)
 
         if embed_path:
-            save_embedded_sents(sentences, embeddings, embed_path=embed_path)
+            self.save_embedded_sents(sentences, embeddings, embed_path=embed_path)
             
         return embeddings
 
@@ -137,13 +137,12 @@ class SimilarExampleSelector(BaseExampleSelector):
                 embeddings = self.encode_sentences(self.embed_sentences, embed_path=self.embed_path)
         return embeddings
 
-    @staticmethod
-    def fetch_most_similar(query: str, sentences: List[str], embeddings: np.ndarray, top_k: int = 5) -> List[Tuple[int, str, float]]:
+    def fetch_most_similar(self, query: str, sentences: List[str], embeddings: np.ndarray, top_k: int = 5) -> List[Tuple[int, str, float]]:
         """
         Fetch the most similar sentences from embedding matrix to a query sentence.
         """
 
-        query_embedding = model.encode(query, show_progress_bar=False, device='cuda', convert_to_numpy=True)
+        query_embedding = self.model.encode(query, show_progress_bar=False, device='cuda', convert_to_numpy=True)
         cosine_scores = pytorch_cos_sim(query_embedding, embeddings)
 
         #Sort scores in decreasing order
