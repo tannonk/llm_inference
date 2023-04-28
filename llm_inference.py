@@ -11,6 +11,7 @@ import math
 import time
 import json
 import logging
+import warnings
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, field
@@ -281,7 +282,9 @@ class InferenceArguments:
 
 
 class LLM(object):
-
+    """
+    Custom class for loading and running language models from HuggingFace.
+    """
     def __init__(self, args: InferenceArguments):
         # https://github.com/huggingface/accelerate/issues/864#issuecomment-1327726388    
         start_time = time.time()
@@ -362,12 +365,18 @@ class LLM(object):
         else:
             return None
 
-    def generate_from_model(self, inputs: List[str]) -> List[str]:
+    def generate_from_model(self, inputs: List[str]) -> List[List[str]]:
         """
         queries the generation model for a given batch of inputs
+
+        Returns a list of lists of generated outputs (i.e. batch_size x num_return_sequences)
         """
         encoded_inputs = self.tokenizer(inputs, return_tensors='pt', padding=True)
         # encoded_inputs has shape: [batch_size, seq_len]
+        if encoded_inputs['input_ids'].shape[1] > 2048:
+            logger.warning(
+                f"Encoded inputs sequence length exceeds: {encoded_inputs['input_ids'].shape[1]}." \
+                f"This may cause issues...")
         start_time = time.time()
         model_outputs = self.model.generate(
             input_ids=encoded_inputs['input_ids'].cuda(), 
@@ -420,6 +429,100 @@ class LLM(object):
 
         return outputs
 
+class API_LLM(object):
+    """
+    Custom class for interacting with the LLMs via APIs.
+    """
+
+    def __init__(self, args: InferenceArguments):
+
+        self.args = args
+
+        from langchain.llms import Cohere, OpenAI
+        from langchain.chat_models import ChatOpenAI
+        
+        from api_secrets import COHERE_API_KEY, OPENAI_API_KEY
+
+        if not (self.args.model_name_or_path.lower().startswith("cohere-") or \
+            self.args.model_name_or_path.lower().startswith("openai-")):
+        
+            raise ValueError("Currently only Cohere and OpenAI models are supported! "
+                            "Prefix your model name with either 'cohere-' or 'openai-'")
+        else:
+            provider = self.args.model_name_or_path.lower().split("-")[0]
+            # Infer the model name by removing the leading provider name
+            model_name = "-".join(self.args.model_name_or_path.lower().split("-")[1:])
+
+            logger.info(f"Loading {provider} model")
+            logger.info("Note that full reproducibility is not guaranteed for API models.")
+
+            if provider == "cohere":
+                self.model = Cohere(
+                    model=model_name,
+                    k=self.args.top_k,
+                    p=self.args.top_p,
+                    max_tokens=self.args.max_new_tokens,
+                    frequency_penalty=self.args.frequency_penalty,
+                    presence_penalty=self.args.presence_penalty,
+                    temperature=self.args.temperature,
+                    cohere_api_key=COHERE_API_KEY
+                )
+            else:
+                if self.args.model_name_or_path == 'openai-gpt-3.5-turbo':
+                    self.model = ChatOpenAI(
+                        model=model_name,
+                        temperature=self.args.temperature,
+                        max_tokens=self.args.max_new_tokens,
+                        top_p=self.args.top_p,
+                        frequency_penalty=self.args.frequency_penalty,
+                        presence_penalty=self.args.presence_penalty,
+                        openai_api_key=OPENAI_API_KEY
+                        )
+                else:
+                    # TODO: Consider adjusting parameter `n` (number of generations) or `best_of`
+                    self.model = OpenAI(
+                        model=model_name,
+                        temperature=self.args.temperature,
+                        max_tokens=self.args.max_new_tokens,
+                        top_p=self.args.top_p,
+                        frequency_penalty=self.args.frequency_penalty,
+                        presence_penalty=self.args.presence_penalty,
+                        openai_api_key=OPENAI_API_KEY
+                    )
+
+        if self.args.batch_size > 1:
+            warnings.warn("Batch size set to value >1. API models only support batch size of 1. "
+                          "Will change batch size to 1 automatically.")
+            self.args.batch_size = 1
+
+    def generate_from_model(self, inputs: List[str]) -> List[List[str]]:
+        """
+        queries the generation model for a given batch of inputs
+
+        Returns a list of lists of generated outputs (i.e. batch_size x num_return_sequences)
+        """
+
+        start_time = time.time()
+        if self.args.model_name_or_path == 'openai-gpt-3.5-turbo':
+            # handle chat inputs differently
+            from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
+            from langchain import LLMChain
+
+            # FIXME: this is a adapted from the LangChain example, but should be improved for our use case
+            human_template="{text}"
+            human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+            chat_prompt = ChatPromptTemplate.from_messages([human_message_prompt])
+            chain = LLMChain(llm=self.model, prompt=chat_prompt)
+            outputs = chain.run(inputs[0])
+        
+        else:
+            outputs = self.model(inputs[0])
+        
+        end_time = time.time()
+
+        logger.info(f"Processed query in {end_time - start_time:.4f} seconds.")
+                
+        return [[outputs.strip()]]
 
 # class LLAMA(object):
 #     """Wrapper class for LLaMA model. Provides the same interface as the above LLM class for HuggingFace models."""
