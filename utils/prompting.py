@@ -65,15 +65,18 @@ class SimilarExampleSelector(BaseExampleSelector):
         self.mode = mode # currently not used
         self.src_key = src_key
         self.tgt_key = tgt_key
-        self.save_dir = Path(save_dir)
+        self.save_dir = Path(save_dir) if save_dir else None
         self.model = SentenceTransformer(model_name)
 
 
         # get a unique id for the example set, which will be used to save the embeddings for later use
         example_set_id = self._get_example_set_id()
         
-        self.save_dir.mkdir(parents=True, exist_ok=True) # create the save directory if it doesn't exist
-        self.embed_path = str(self.save_dir / f'{example_set_id}-{model_name}.pkl')
+        if self.save_dir is not None:
+            self.save_dir.mkdir(parents=True, exist_ok=True) # create the save directory if it doesn't exist
+            self.embed_path = str(self.save_dir / f'{example_set_id}-{model_name}.pkl')
+        else:
+            self.embed_path = None
         
         # if the embeddings have already been saved, load them, otherwise, embed the sentences and save them
         self.embed_sentences = [ex[src_key] for ex in examples] # note, we embed the source sentences only
@@ -116,19 +119,23 @@ class SimilarExampleSelector(BaseExampleSelector):
         """
         Fetch embeddings from a saved file if they exist, otherwise compute them and save them to a file.
         """
-        try:
-            saved_sentences, saved_embeddings = self.load_embedded_sents(self.embed_path)
-            if saved_sentences == self.embed_sentences:
-                logger.info(f"Found pre-computed embeddings for {len(self.embed_sentences)} sentences.")
-                return saved_embeddings
-            else:
-                logger.info(f"Sentences have changed. Computing new embeddings for {len(self.embed_sentences)} sentences.")
-                embeddings = self.encode_sentences(self.embed_sentences, embed_path=self.embed_path)
-                return embeddings
-        except FileNotFoundError:
-            logger.info(f"Embeddings not found. Computing new embeddings for {len(self.embed_sentences)} sentences.")
+        if not self.embed_path:
+            logger.info("No embeddings path provided. Computing new embeddings.")
             embeddings = self.encode_sentences(self.embed_sentences, embed_path=self.embed_path)
-            return embeddings
+        else:
+            try:
+                saved_sentences, saved_embeddings = self.load_embedded_sents(self.embed_path)
+                if saved_sentences == self.embed_sentences:
+                    logger.info(f"Found pre-computed embeddings for {len(self.embed_sentences)} sentences.")
+                    return saved_embeddings
+                else:
+                    logger.info(f"Sentences have changed. Computing new embeddings for {len(self.embed_sentences)} sentences.")
+                    embeddings = self.encode_sentences(self.embed_sentences, embed_path=self.embed_path)
+                    return embeddings
+            except FileNotFoundError:
+                logger.info(f"Could not locate embeddings at {self.embed_path}. Computing new embeddings for {len(self.embed_sentences)} sentences.")
+                embeddings = self.encode_sentences(self.embed_sentences, embed_path=self.embed_path)
+        return embeddings
 
     @staticmethod
     def fetch_most_similar(query: str, sentences: List[str], embeddings: np.ndarray, top_k: int = 5) -> List[Tuple[int, str, float]]:

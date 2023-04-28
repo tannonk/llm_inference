@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
+# Example call:
+# nohup bash run.sh > logs/asset_all.jobs 2>&1 &
+
 # WARNING this will attempt to run all the models with configs defined in the exp_configs/cluster folder!
 
 # Hardcoded paths
@@ -20,8 +23,7 @@ echo "Running models: ${model_config_files[@]}"
 echo ""
 
 # iterate through array using a counter
-# for seed in 489 287 723; do
-for prompt_id in p1 p2; do
+for prompt_id in p0 p1 p2; do
     echo ""
         echo "### PROMPT ID $prompt_id ###"
     echo ""
