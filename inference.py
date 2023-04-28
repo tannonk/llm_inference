@@ -81,6 +81,11 @@ def run_inference(args):
         end_time = time.time()
         logger.info(f"Finished inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
         logger.info(f"Wrote {c} outputs to {args.output_file}")
+        try:
+            logger.info(f"Total estimated cost: ${llm.estimated_cost:.4f} USD")
+        except AttributeError:
+            pass
+            
 
 if __name__ == '__main__':
     parser = HfArgumentParser((InferenceArguments))

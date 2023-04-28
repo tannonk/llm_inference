@@ -494,6 +494,8 @@ class API_LLM(object):
             warnings.warn("Batch size set to value >1. API models only support batch size of 1. "
                           "Will change batch size to 1 automatically.")
             self.args.batch_size = 1
+        # track the estimated cost of the API calls
+        self.estimated_cost = 0
 
     def generate_from_model(self, inputs: List[str]) -> List[List[str]]:
         """
@@ -502,6 +504,8 @@ class API_LLM(object):
         Returns a list of lists of generated outputs (i.e. batch_size x num_return_sequences)
         """
 
+        from langchain.callbacks import get_openai_callback
+        # breakpoint()
         start_time = time.time()
         if self.args.model_name_or_path == 'openai-gpt-3.5-turbo':
             # handle chat inputs differently
@@ -513,11 +517,16 @@ class API_LLM(object):
             human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
             chat_prompt = ChatPromptTemplate.from_messages([human_message_prompt])
             chain = LLMChain(llm=self.model, prompt=chat_prompt)
-            outputs = chain.run(inputs[0])
-        
+            with get_openai_callback() as cb:
+                outputs = chain.run(inputs[0])
+                logger.info(f'{cb}'.replace("\n", ", "))
+                self.estimated_cost += cb.total_cost
         else:
-            outputs = self.model(inputs[0])
-        
+            with get_openai_callback() as cb:
+                outputs = self.model(inputs[0])
+                logger.info(f'{cb}'.replace("\n", ", "))
+                self.estimated_cost += cb.total_cost
+
         end_time = time.time()
 
         logger.info(f"Processed query in {end_time - start_time:.4f} seconds.")
