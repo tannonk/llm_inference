@@ -34,7 +34,7 @@ parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", d
                     help="Path to model configuration templates for running experiments")
 parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY",
                     help="Path to results from the configuration templates")
-parser.add_argument("--reports_dir", type=str, default="reports/", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
+parser.add_argument("--reports_dir", type=str, default="resources/outputs/reports", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
 parser.add_argument("--checklist_dir", type=str, default="reports/", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
 args = parser.parse_args()
 

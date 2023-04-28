@@ -28,6 +28,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
+eval_header = "bleu;sari;fkgl;pbert_ref;rbert_ref;fbert_ref;pbert_src;rbert_src;fbert_src;ppl_mean;ppl_std;lens;lens_std;intra_dist1;intra_dist2;inter_dist1;inter_dist2;Compression ratio;Sentence splits;Levenshtein similarity;Exact copies;Additions proportion;Deletions proportion;Lexical complexity score;file_id"
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -48,6 +49,12 @@ def line_count(filepath: Path) -> int:
         logger.info(f'{lc} lines found in {filepath}')
     return 
 
+def check_eval_file(filepath: Path) -> None:
+    with open(filepath, 'r', encoding='utf8') as f:
+        if f.readlines()[0].strip() != eval_header:
+            logger.warning(f'{bcolors.FAIL}Header mismatch in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
+    return
+
 def check_log_file(filepath: Path) -> None:
     with open(filepath, 'r', encoding='utf8') as f:
         log = f.read()
@@ -59,7 +66,7 @@ def check_log_file(filepath: Path) -> None:
             logger.warning(f'{bcolors.FAIL}Failed to write results in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
             print('\t', log[-200:])
             return
-
+        
         # check for errors explitly
         if 'Traceback' in log:
             logger.warning(f'{bcolors.FAIL}Traceback found in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
@@ -105,6 +112,9 @@ if __name__ == '__main__':
             outputs_file = filepath.with_suffix('.jsonl')
             line_count(outputs_file)
             c += 1
+        
+        for filepath in model_dir.glob('*.eval'):
+            check_eval_file(filepath)
     
     # if there are any configs left, they have not been run yet
     if len(configs) > 0:
