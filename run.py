@@ -10,6 +10,9 @@
 This is a wrapper to facilitate the execution of experiments 
 either on a slurm cluster or directly on a local machine.
 
+This script will create a command line call given a set of arguments that is printed to stdout and executed.
+If you don't want to execute the command, you can set the `--dry_run` flag to True.
+
 Example Call:
 
 python -m run \
@@ -24,7 +27,9 @@ python -m run \
     --model_name_or_path bigscience/bloom-560m \
     --examples resources/data/asset/dataset/asset.valid.jsonl \
     --input_file resources/data/asset/dataset/asset.test.jsonl \
-    --prompt_json prompts/p0.json
+    --prompt_json prompts/p0.json \
+    --n_refs 1 --few_shot_n 3 \
+    --dry_run True # won't execute the command, will only print it to stdout
 
 Alternatively, you can pass a json file in position 1 with some or all of the arguments:
 
@@ -137,6 +142,11 @@ class SubmitArguments:
         metadata={"help": "If set to True, evaluation is executed"}
     )
 
+    use_api: bool = field(
+        default=False,
+        metadata={"help": "If set to True, we run API-based inference"}
+    )
+
 
 def slurm_is_available():
     out = subprocess.run(["sinfo"], capture_output=True, shell=True)
@@ -215,20 +225,29 @@ if __name__ == "__main__":
     # Inference
     if s_args.do_inference:
         
+        # if s_args.use_api:
+        #     # for API-based inference, we need to don't need to submit a slurm job
+        #     prefix = 'bash '
+            
+        #     suffix = f'>| {log_file} 2>&1'
+        
         # Check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
             prefix = 'bash '
 
             # Set GPU resources
-            if s_args.device_id == 'auto':
-
+            if s_args.use_api: # API-based inference, doesn't need GPU
+                pass
+            
+            elif s_args.device_id == 'auto':
                 avail_gpus = get_free_gpu_indices()
                 if len(avail_gpus) < s_args.n_gpus:
                     raise ValueError(f"Only {len(avail_gpus)} GPUs available, but {s_args.n_gpus} requested.")
                 else:
                     avail_gpus = ','.join([str(i) for i in avail_gpus[:s_args.n_gpus]])                   
                     prefix = f'CUDA_VISIBLE_DEVICES={avail_gpus} ' + prefix
+            
             else:
                 prefix = f'CUDA_VISIBLE_DEVICES={s_args.device_id} ' + prefix
 
@@ -244,7 +263,10 @@ if __name__ == "__main__":
                     f'--output={log_file} '
                 
             # Set GPU resources
-            if s_args.n_gpus > 0:
+            if s_args.use_api: # API-based inference, doesn't need GPU
+                pass
+
+            elif s_args.n_gpus > 0:
                 if s_args.gpu_type:
                     gres = f'gpu:{s_args.gpu_type}:{s_args.n_gpus}'
                 else:
@@ -260,6 +282,9 @@ if __name__ == "__main__":
             script = 'slurm_scripts/run_inference_on_a100.sh '
         else:
             script = 'slurm_scripts/run_inference_on_t4.sh '
+        
+        if s_args.use_api:
+            script = 'slurm_scripts/run_inference_on_api.sh ' # TODO: add support for api models
 
         args = f'--model_name_or_path "{i_args.model_name_or_path}" ' \
                     f'--is_encoder_decoder {i_args.is_encoder_decoder} ' \
@@ -329,9 +354,6 @@ if __name__ == "__main__":
         # check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
         
-            if not Path(output_file).exists():
-                raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
-
             prefix = 'bash ' # will execute the directly
 
             # Set GPU resources
@@ -376,6 +398,10 @@ if __name__ == "__main__":
             job_id2 = None
         
         else:
+            # Check if output file exists before submitting job!
+            if not Path(output_file).exists():
+                raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
+
             result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True, check=True)
 
             if result2.returncode == 0:

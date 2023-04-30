@@ -132,12 +132,12 @@ python -m torch.distributed.run \
 
 #### Running Models behind APIs
 
-Currently, the script `inference_API_models.py` supports running OpenAI or Cohere models.
+The script `inference.py` also supports running OpenAI or Cohere models.
 You will have to modify the template of `secrets.py` such that `COHERE_API_KEY` and `OPENAI_API_KEY` are exposed to the library.
 
 Running models can be done, for example, with the following command:
 ```bash
-python -m inference_API_models \
+python -m inference \
 --model_name_or_path cohere-command-xlarge-nightly \
 --input_file "resources/data/asset/dataset/asset.test.jsonl" \
 --examples "resources/data/asset/dataset/asset.valid.jsonl" \
@@ -146,6 +146,17 @@ python -m inference_API_models \
 --output_dir "resources/outputs" \
 --prompt_json "prompts/p0.json"
 ```
+
+Be aware that API models cost money! The approximate cost of running the OpenAI models on ASSET test set (using 3 Few-shot examples) is
+
+|  Model | Total inference cost |
+| ------ | -------------------- |
+| openai-gpt-3.5-turbo | $0.1718 USD |
+| openai-text-ada-001 | $1.7553 USD |
+| openai-text-babbage-001 | $1.7525 USD |
+| openai-text-curie-001 | $1.7527 USD |
+| openai-text-davinci-002 | $1.7483 USD |
+| openai-text-davinci-003 | $1.7356 USD |
 
 
 ## Prompting
