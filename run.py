@@ -224,13 +224,7 @@ if __name__ == "__main__":
 
     # Inference
     if s_args.do_inference:
-        
-        # if s_args.use_api:
-        #     # for API-based inference, we need to don't need to submit a slurm job
-        #     prefix = 'bash '
-            
-        #     suffix = f'>| {log_file} 2>&1'
-        
+                
         # Check if slurm is available. If not, will execute directly
         if not s_args.use_slurm or not slurm_is_available():
 
@@ -398,8 +392,10 @@ if __name__ == "__main__":
             job_id2 = None
         
         else:
-            # Check if output file exists before submitting job!
-            if not Path(output_file).exists():
+            # If executing directly, first check if output file exists before submitting job!
+            # If submitting job with slurm, then we don't need to check if output file exists
+            # as we specify the dependency on the inference job
+            if (not s_args.use_slurm or not slurm_is_available()) and not Path(output_file).exists():
                 raise RuntimeError(f"Expected output file `{output_file}` does not exist. Please run inference first.")
 
             result2 = subprocess.run(evaluate_command, capture_output=True, text=True, shell=True, check=True)
