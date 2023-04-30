@@ -82,7 +82,8 @@ def run_inference(args):
         logger.info(f"Finished inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
         logger.info(f"Wrote {c} outputs to {args.output_file}")
         try:
-            logger.info(f"Total estimated cost: ${llm.estimated_cost:.4f} USD")
+            if llm.estimated_cost > 0:
+                logger.info(f"Total estimated cost: ${llm.estimated_cost:.4f} USD")
         except AttributeError:
             pass
             

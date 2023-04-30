@@ -470,7 +470,7 @@ class API_LLM(object):
             else:
                 if self.args.model_name_or_path == 'openai-gpt-3.5-turbo':
                     self.model = ChatOpenAI(
-                        model=model_name,
+                        model_name=model_name,
                         temperature=self.args.temperature,
                         max_tokens=self.args.max_new_tokens,
                         top_p=self.args.top_p,
@@ -481,7 +481,7 @@ class API_LLM(object):
                 else:
                     # TODO: Consider adjusting parameter `n` (number of generations) or `best_of`
                     self.model = OpenAI(
-                        model=model_name,
+                        model_name=model_name,
                         temperature=self.args.temperature,
                         max_tokens=self.args.max_new_tokens,
                         top_p=self.args.top_p,
@@ -505,14 +505,12 @@ class API_LLM(object):
         """
 
         from langchain.callbacks import get_openai_callback
-        # breakpoint()
+        
         start_time = time.time()
         if self.args.model_name_or_path == 'openai-gpt-3.5-turbo':
             # handle chat inputs differently
             from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
             from langchain import LLMChain
-
-            # FIXME: this is a adapted from the LangChain example, but should be improved for our use case
             human_template="{text}"
             human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
             chat_prompt = ChatPromptTemplate.from_messages([human_message_prompt])
@@ -521,11 +519,13 @@ class API_LLM(object):
                 outputs = chain.run(inputs[0])
                 logger.info(f'{cb}'.replace("\n", ", "))
                 self.estimated_cost += cb.total_cost
-        else:
+        elif self.args.model_name_or_path.startswith('openai-'):
             with get_openai_callback() as cb:
                 outputs = self.model(inputs[0])
                 logger.info(f'{cb}'.replace("\n", ", "))
                 self.estimated_cost += cb.total_cost
+        else:
+            outputs = self.model(inputs[0])
 
         end_time = time.time()
 
