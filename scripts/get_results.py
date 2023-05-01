@@ -13,7 +13,11 @@ Results repo (https://github.com/tannonk/llm_simplification_results/) should be 
 
 Example usage:
 
-    python -m scripts.get_results --reports_dir resources/outputs/reports --checklist_dir reports/
+    python -m scripts.get_results \
+        --exp_configs exp_configs/cluster \
+        --outputs resources/outputs \
+        --reports resources/outputs/reports \
+        --public reports
 
 """
 
@@ -31,10 +35,10 @@ from pytablewriter import MarkdownTableWriter
 parser = argparse.ArgumentParser()
 parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster", dest="EXP_TO_RUN",
                     help="Path to model configuration templates for running experiments")
-parser.add_argument("--outputs_dir", type=str, default="resources/outputs", dest="EXP_READY",
+parser.add_argument("--outputs", type=str, default="resources/outputs", dest="EXP_READY",
                     help="Path to results from the configuration templates")
-parser.add_argument("--reports_dir", type=str, default="resources/outputs/reports", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
-parser.add_argument("--checklist_dir", type=str, default="reports", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
+parser.add_argument("--reports", type=str, default="resources/outputs/reports", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
+parser.add_argument("--public", type=str, default="", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
 args = parser.parse_args()
 
 # Headers renaming for sharing
@@ -132,18 +136,19 @@ def get_columns(file_headers):
 
 def setup_save(tag):
     results_path = [
-        args.PRIVATE_REPORTS_OUT,
-        args.PUBLIC_REPORTS_OUT,
-        f"{args.PRIVATE_REPORTS_OUT}/full",
-        f"{args.PRIVATE_REPORTS_OUT}/summary",
-        f"{args.PRIVATE_REPORTS_OUT}/raw",
-        f"{args.PUBLIC_REPORTS_OUT}/checklist"
+        Path(args.PRIVATE_REPORTS_OUT),
+        Path(args.PRIVATE_REPORTS_OUT) / f"full",
+        Path(args.PRIVATE_REPORTS_OUT) / f"summary",
+        Path(args.PRIVATE_REPORTS_OUT) / f"raw",
     ]
-    for p in results_path:
-        if not Path(p).exists():
-            Path(p).mkdir(parents=True, exist_ok=True)
+    if args.PUBLIC_REPORTS_OUT:
+        results_path.append(Path(args.PUBLIC_REPORTS_OUT) / f"checklist")
 
-    return [r for r in results_path if tag in r]
+    for p in results_path:
+        if not p.exists():
+            p.mkdir(parents=True, exist_ok=True)
+
+    return [str(r) for r in results_path if tag in str(r)]
 
 
 def save_results_full(df, tag="full"):
