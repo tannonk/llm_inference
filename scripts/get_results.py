@@ -142,7 +142,7 @@ def setup_save(tag):
         Path(args.PRIVATE_REPORTS_OUT) / f"raw",
     ]
     if args.PUBLIC_REPORTS_OUT:
-        results_path.append(Path(args.PUBLIC_REPORTS_OUT) / f"checklist")
+        results_path.append(Path(args.PUBLIC_REPORTS_OUT))
 
     for p in results_path:
         if not p.exists():
@@ -227,8 +227,10 @@ def get_unique_params(parsed_results):
 
 
 def print_results(checklist):
-    paths = setup_save("check")
-    paths.append(f"{args.PRIVATE_REPORTS_OUT}") # add the private reports folder to the list
+    paths = [f"{args.PRIVATE_REPORTS_OUT}"] # add the private reports folder to the list
+    if args.PUBLIC_REPORTS_OUT:
+        paths.append(f"{args.PUBLIC_REPORTS_OUT}")
+        
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
