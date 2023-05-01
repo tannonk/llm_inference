@@ -19,7 +19,6 @@ Example usage:
 
 import glob
 import itertools
-import os
 import re
 from pathlib import Path
 import argparse
@@ -30,12 +29,12 @@ from pytablewriter import MarkdownTableWriter
 
 # user defined args
 parser = argparse.ArgumentParser()
-parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN",
+parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster", dest="EXP_TO_RUN",
                     help="Path to model configuration templates for running experiments")
-parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY",
+parser.add_argument("--outputs_dir", type=str, default="resources/outputs", dest="EXP_READY",
                     help="Path to results from the configuration templates")
 parser.add_argument("--reports_dir", type=str, default="resources/outputs/reports", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
-parser.add_argument("--checklist_dir", type=str, default="reports/", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
+parser.add_argument("--checklist_dir", type=str, default="reports", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
 args = parser.parse_args()
 
 # Headers renaming for sharing
@@ -85,7 +84,6 @@ def get_results():
         file_headers = [c for c in df.columns if "file_id" not in c]
         for head in file_headers:
             score = float(df[head].iloc[0])
-            score = round(score, 2)
             parsed_results.append(score)
 
         output.append(parsed_results)
@@ -139,32 +137,37 @@ def setup_save(tag):
         f"{args.PRIVATE_REPORTS_OUT}/full",
         f"{args.PRIVATE_REPORTS_OUT}/summary",
         f"{args.PRIVATE_REPORTS_OUT}/raw",
-        f"{args.PUBLIC_REPORTS_OUT}/checklist/"
+        f"{args.PUBLIC_REPORTS_OUT}/checklist"
     ]
     for p in results_path:
         if not Path(p).exists():
-            os.makedirs(p)
+            Path(p).mkdir(parents=True, exist_ok=True)
 
-    return [r for r in results_path if tag in r][0]
-
-
-def save_results_full(df):
-    path = setup_save("full")
-    df = df.groupby(["Model", "Test", "Few(n)", "n", "Prompt", "r"]).mean()
-    save_with_format(path, df, "full")
+    return [r for r in results_path if tag in r]
 
 
-def save_results_summary(df):
-    path = setup_save("summary")
+def save_results_full(df, tag="full"):
+    paths = setup_save(tag)
+    df = df.groupby(["Model", "Test", "Few(n)", "n", "Prompt", "r", "ex_selector"]).mean()
+    for path in paths:
+        save_with_format(path, df, tag)
+
+
+def save_results_summary(df, tag="summary"):
+    paths = setup_save(tag)
     df = df[SUMMARY_COLUMNS]
     df = df.groupby(["Model", "Test", "Prompt"]).mean()
-    save_with_format(path, df, "summary")
-
+    for path in paths:
+        save_with_format(path, df, tag)
 
 def save_results_raw(df, tag="raw"):
-    path = setup_save("raw")
-    df = df.round(2)
-    df.to_csv(f"{path}/{tag}_results.csv".lower(), index=False)
+    paths = setup_save(tag)
+    df = df.round(4) # use more precision for raw results
+    # sort the dataframe for easier git diff
+    df = df.sort_values(['Model', 'Test', 'Few(n)', 'n', 'Prompt', 'r', 's', 'ex_selector'])
+    for path in paths:
+        df.to_csv(f"{path}/{tag}_results.csv".lower(), index=False)
+        print(f"Wrote file: {path}/{tag}_results.csv")
 
 
 def save_with_format(path, df, tag):
@@ -174,7 +177,7 @@ def save_with_format(path, df, tag):
         sorting_asc = "fkgl" in metric
         df = df.sort_values(by=metric, ascending=sorting_asc)
         df.to_csv(f"{path}/{tag}_results_by_{metric}.csv".lower(), index=False)
-
+        print(f"Wrote file: {path}/{tag}_results_by_{metric}.csv")
 
 def create_checklist():
     files = glob.glob(f"{args.EXP_READY}/*/*eval")  # Get the list of templates that are already run
@@ -203,7 +206,7 @@ def get_unique_params(parsed_results):
     templates = get_filtered_files(templates)
     templates = [Path(file).stem for file in templates]
 
-    prompts = ["p1", "p2"]
+    prompts = ["p0", "p1", "p2"]
     unique_params = []
 
     for i in range(0, len(parsed_results[0])):
@@ -219,23 +222,26 @@ def get_unique_params(parsed_results):
 
 
 def print_results(checklist):
-    path = setup_save("check")
-    outfile = f"{path}/checklist.md"
+    paths = setup_save("check")
+    paths.append(f"{args.PRIVATE_REPORTS_OUT}") # add the private reports folder to the list
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
         headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Strategy", "Done?"],
         value_matrix=checklist,
     )
-    writer.dump(outfile)
-
-    with open(f"{path}/checklist.csv", "w") as f:
-        for c in checklist:
-            index = len(c) - 1
-            c[index] = c[index].replace(":white_check_mark:", "Yes")
-            c[index] = c[index].replace(":heavy_multiplication_x:", "No")
-            f.write(f"{','.join(c)}\n")
-
+    for path in paths:
+        outfile = f"{path}/checklist.md"
+        writer.dump(outfile)
+        print(f"Wrote file: {outfile}")
+    
+        with open(f"{path}/checklist.csv", "w") as f:
+            for c in checklist:
+                index = len(c) - 1
+                c[index] = c[index].replace(":white_check_mark:", "Yes")
+                c[index] = c[index].replace(":heavy_multiplication_x:", "No")
+                f.write(f"{','.join(c)}\n")
+        print(f"Wrote file: {path}/checklist.csv")
 
 def main():
     validate_env()
