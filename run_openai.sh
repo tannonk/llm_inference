@@ -2,7 +2,15 @@
 # -*- coding: utf-8 -*-
 
 # Example call:
-# bash run_openai.sh openai-text-ada-001
+# bash run_openai.sh exp_configs/rtx/openai-text-ada-001.json
+# bash run_openai.sh exp_configs/rtx/openai-text-babbage-001.json exp_configs/rtx/openai-text-curie-001.json exp_configs/rtx/openai-text-davinci-002.json exp_configs/rtx/openai-text-davinci-003.json
+# openai-gpt-3.5-turbo.json
+# openai-text-ada-001.json
+# openai-text-babbage-001.json
+# openai-text-curie-001.json
+# openai-text-davinci-002.json
+# openai-text-davinci-003.json
+
 
 # WARNING this will attempt to run all the models with configs defined in the exp_configs/cluster folder!
 MODEL_CONFIG_DIR=exp_configs/cluster
