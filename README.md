@@ -38,28 +38,22 @@ CUDA_VERSION=116 make cuda11x
 python setup.py install
 cd ../..
 
-# # install promptsource from source
-# git clone https://github.com/bigscience-workshop/promptsource.git installs/promptsource
-# cd installs/promptsource
-# pip install -e .
-
-# for inference with LlaMa, install the relevant package from source
-git clone https://github.com/facebookresearch/llama.git installs/llama
-cd installs/llama
-pip install -r requirements.txt
-pip install -e .
-cd ../..
-
 # install other deps
 pip install -r requirements.txt
 
 # check the install and CUDA dependencies
 python -m bitsandbytes
 
+# For evaluation purposes, we also require the following packages
 git clone https://github.com/feralvam/easse.git installs/easse
 cd installs/easse
 pip install -e .
 cd ../..
+
+git clone https://github.com/Yao-Dou/LENS.git installs/LENS
+cd LENS/lens
+pip install -e .
+cd ../../..
 
 ```
 
@@ -138,12 +132,12 @@ python -m torch.distributed.run \
 
 #### Running Models behind APIs
 
-Currently, the script `inference_API_models.py` supports running OpenAI or Cohere models.
+The script `inference.py` also supports running OpenAI or Cohere models.
 You will have to modify the template of `secrets.py` such that `COHERE_API_KEY` and `OPENAI_API_KEY` are exposed to the library.
 
 Running models can be done, for example, with the following command:
 ```bash
-python -m inference_API_models \
+python -m inference \
 --model_name_or_path cohere-command-xlarge-nightly \
 --input_file "resources/data/asset/dataset/asset.test.jsonl" \
 --examples "resources/data/asset/dataset/asset.valid.jsonl" \
@@ -152,6 +146,17 @@ python -m inference_API_models \
 --output_dir "resources/outputs" \
 --prompt_json "prompts/p0.json"
 ```
+
+Be aware that API models cost money! The approximate cost of running the OpenAI models on ASSET test set (using 3 Few-shot examples with `p0.json`) is
+
+|  Model | Approx. inference cost |
+| ------ | -------------------- |
+| openai-gpt-3.5-turbo | $0.172 USD |
+| openai-text-ada-001 | $0.035 USD |
+| openai-text-babbage-001 | $0.044 USD |
+| openai-text-curie-001 | $0.175 USD |
+| openai-text-davinci-002 | $1.75 USD |
+| openai-text-davinci-003 | $1.75 USD |
 
 
 ## Prompting
@@ -240,4 +245,4 @@ Please contact Tannon Kew (Slack) to get access to this repo.
 
 ## TODOs
 
-You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/data/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
+You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/reports/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.

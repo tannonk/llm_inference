@@ -1,27 +1,32 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# __Author__ = 'Tannon Kew'
-# __Email__ = 'kew@cl.uzh.ch
-# __Date__ = '2023-03-03'
+# __Author__ = 'Tannon Kew', 'Dennis Aumiller'
+# __Email__ = 'kew@cl.uzh.ch', 'aumiller@informatik.uni-heidelberg.de' 
+# __Date__ = '2023-03-03', '2023-03-07'
+
+# Updates:
+# refacored `inference.py` to incorporate inference with API models
 
 import os
 import sys
 import time
 from pathlib import Path
 import random
+import warnings
 import logging
 from typing import List, Dict, Tuple, Optional, Union
 
 from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
 
-from utils.helpers import iter_batches, iter_json_lines, serialize_to_jsonl, get_output_file_name, persist_args
-from utils.prompting import prepare_prompted_inputs, RandomExampleSelector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
-from llm_inference import InferenceArguments, LLM
-
+from utils.helpers import iter_batches, serialize_to_jsonl, get_output_file_name, persist_args
+from utils.prompting import prepare_prompted_inputs, get_example_selector, postprocess_model_outputs, construct_example_template, load_predefined_prompt
+from llm_inference import InferenceArguments, LLM, API_LLM
 
 logger = logging.getLogger(__name__)
+
+
 
 def run_inference(args):
 
@@ -29,20 +34,14 @@ def run_inference(args):
     set_seed(args.seed)
 
     # load model
-    # if "llama" in args.model_name_or_path.lower(): # special case for Facebook's LLaMA model
-    #     llm = LLAMA(args)
-    # else:
-    llm = LLM(args)
+    if args.model_name_or_path.lower().startswith("cohere-") or args.model_name_or_path.lower().startswith("openai-"):
+        llm = API_LLM(args)
+    else:
+        llm = LLM(args)
     
-    # prepare few-shot examples
-    examples = list(iter_json_lines(args.examples))
-    logger.info(f"Few-shot examples will be sampled from {len(examples)} items")
     # initialise example selector object
-    example_selector = RandomExampleSelector(
-            examples=examples, # the examples it has available to choose from.
-            few_shot_n=args.few_shot_n,
-            n_refs=args.n_refs,
-        )
+    example_selector = get_example_selector(args)
+    
     # construct example prompt that is reused for all inputs (with different examples)
     example_prompt = construct_example_template(args.prompt_template, args.source_field, args.target_field)
     
@@ -72,7 +71,7 @@ def run_inference(args):
             )
             
             outputs = llm.generate_from_model(inputs)
-
+            
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)
 
             for line in serialize_to_jsonl(inputs, outputs, batch_inputs, batch_refs):
@@ -82,6 +81,12 @@ def run_inference(args):
         end_time = time.time()
         logger.info(f"Finished inference on {args.input_file} in {end_time - start_time:.4f} seconds.")
         logger.info(f"Wrote {c} outputs to {args.output_file}")
+        try:
+            if llm.estimated_cost > 0:
+                logger.info(f"Total estimated cost: ${llm.estimated_cost:.4f} USD")
+        except AttributeError:
+            pass
+            
 
 if __name__ == '__main__':
     parser = HfArgumentParser((InferenceArguments))

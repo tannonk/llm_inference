@@ -13,7 +13,7 @@ Results repo (https://github.com/tannonk/llm_simplification_results/) should be 
 
 Example usage:
 
-    python -m scripts.create_checklist
+    python -m scripts.get_results --reports_dir resources/outputs/reports --checklist_dir reports/
 
 """
 
@@ -22,14 +22,21 @@ import itertools
 import os
 import re
 from pathlib import Path
+import argparse
 
 import numpy as np
 import pandas as pd
 from pytablewriter import MarkdownTableWriter
 
-EXP_TO_RUN = "exp_configs/rtx"  # Configuration templates for running experiments
-EXP_READY = "resources/outputs/"  # Results from the configuration templates
-REPORTS_OUT = "resources/outputs/reports"
+# user defined args
+parser = argparse.ArgumentParser()
+parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN",
+                    help="Path to model configuration templates for running experiments")
+parser.add_argument("--outputs_dir", type=str, default="resources/outputs/", dest="EXP_READY",
+                    help="Path to results from the configuration templates")
+parser.add_argument("--reports_dir", type=str, default="resources/outputs/reports", dest="PRIVATE_REPORTS_OUT", help="Path to reports")
+parser.add_argument("--checklist_dir", type=str, default="reports/", dest="PUBLIC_REPORTS_OUT", help="Path to checklist")
+args = parser.parse_args()
 
 # Headers renaming for sharing
 HEADERS_NAMES = {
@@ -42,18 +49,34 @@ HEADERS_NAMES = {
     "prompt": "Prompt",
     "fbert_ref": "F1_bert_ref",
     "fbert_src": "F1_bert_src",
+    "lens": "LENS",
+    "lens_std": "LENS_std",
     "Compression ratio": "c_ratio",
     "Sentence splits": "splits",
     "Levenshtein similarity": "lev_sim",
     "Exact copies": "copies",
     "Additions proportion": "adds",
     "Deletions proportion": "deletes",
-    "Lexical complexity score": "lex_complexity"}
+    "Lexical complexity score": "lex_complexity"
+}
+
+SUMMARY_COLUMNS = ["Model", "Test", "Prompt", "s", "sari", "fkgl",
+                   "F1_bert_ref", "F1_bert_src", "LENS",
+                   "lev_sim", "lex_complexity"]
+
+SORT_BY_METRICS = ["sari", "fkgl", "F1_bert_ref", "LENS"]
+
+
+def validate_env():
+    if not Path(args.EXP_READY).exists():
+        raise Exception(f"Directory for results does not exist: {args.EXP_READY}")
+    if not Path(args.EXP_TO_RUN).exists():
+        raise Exception(f"Directory for model configurations does not exist: {args.EXP_TO_RUN}")
 
 
 def get_results():
     # Check if the test set exists and has the same amount of lines
-    files = glob.glob(f"{EXP_READY}/*/*eval")
+    files = glob.glob(f"{args.EXP_READY}/*/*eval")
     files = [file for file in files if "dummy" and "t5-v1-1" not in file]
     output = []
     for file in files:
@@ -71,6 +94,7 @@ def get_results():
     final_df = pd.DataFrame.from_records(output, columns=columns)
     save_results_full(final_df)
     save_results_summary(final_df)
+    save_results_raw(final_df)
     return final_df
 
 
@@ -80,16 +104,24 @@ def get_filtered_files(files):
 
 def get_initial_params(file):
     model = Path(file).parent.name
-    test, example, prompt, few_n, refs, seed = Path(file).name.split("_")
+    hps = Path(file).name.split("_")
+    if len(hps) == 6:
+        test, example, prompt, few_n, refs, seed = hps
+        ex_selector = "random"
+    elif len(hps) == 7:
+        test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
+    else:
+        raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
+
     few_n = few_n.replace("fs", "")
     refs = refs.replace("nr", "")
     seed = re.search(r'\d+', seed).group()
 
-    return [model, test, example, few_n, prompt, refs, seed]
+    return [model, test, example, few_n, prompt, refs, seed, ex_selector]
 
 
 def get_columns(file_headers):
-    columns = ["model", "test", "example", "few_n", "prompt", "refs", "seed"]
+    columns = ["model", "test", "example", "few_n", "prompt", "refs", "seed", "ex_selector"]
     formatted_columns = []
     columns.extend(file_headers)
     for c in columns:
@@ -101,7 +133,14 @@ def get_columns(file_headers):
 
 
 def setup_save(tag):
-    results_path = [REPORTS_OUT, f"{REPORTS_OUT}/full", f"{REPORTS_OUT}/summary", "data/checklist/"]
+    results_path = [
+        args.PRIVATE_REPORTS_OUT,
+        args.PUBLIC_REPORTS_OUT,
+        f"{args.PRIVATE_REPORTS_OUT}/full",
+        f"{args.PRIVATE_REPORTS_OUT}/summary",
+        f"{args.PRIVATE_REPORTS_OUT}/raw",
+        f"{args.PUBLIC_REPORTS_OUT}/checklist/"
+    ]
     for p in results_path:
         if not Path(p).exists():
             os.makedirs(p)
@@ -117,22 +156,28 @@ def save_results_full(df):
 
 def save_results_summary(df):
     path = setup_save("summary")
-    df = df[["Model", "Test", "Prompt", "s", "sari", "fkgl", "F1_bert_ref", "F1_bert_src", "lev_sim", "lex_complexity"]]
+    df = df[SUMMARY_COLUMNS]
     df = df.groupby(["Model", "Test", "Prompt"]).mean()
     save_with_format(path, df, "summary")
+
+
+def save_results_raw(df, tag="raw"):
+    path = setup_save("raw")
+    df = df.round(2)
+    df.to_csv(f"{path}/{tag}_results.csv".lower(), index=False)
 
 
 def save_with_format(path, df, tag):
     df = df.reset_index().round(2)
 
-    for metric in ["sari", "fkgl", "F1_bert_ref"]:
+    for metric in SORT_BY_METRICS:
         sorting_asc = "fkgl" in metric
         df = df.sort_values(by=metric, ascending=sorting_asc)
         df.to_csv(f"{path}/{tag}_results_by_{metric}.csv".lower(), index=False)
 
 
 def create_checklist():
-    files = glob.glob(f"{EXP_READY}/*/*eval")  # Get the list of templates that are already run
+    files = glob.glob(f"{args.EXP_READY}/*/*eval")  # Get the list of templates that are already run
     files = get_filtered_files(files)
     parsed_results = []
     for file in files:
@@ -154,7 +199,7 @@ def create_checklist():
 
 
 def get_unique_params(parsed_results):
-    templates = glob.glob(f"{EXP_TO_RUN}/*")  # Get list of config files that are planned to be run
+    templates = glob.glob(f"{args.EXP_TO_RUN}/*")  # Get list of config files that are planned to be run
     templates = get_filtered_files(templates)
     templates = [Path(file).stem for file in templates]
 
@@ -179,7 +224,7 @@ def print_results(checklist):
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
-        headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Done?"],
+        headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Strategy", "Done?"],
         value_matrix=checklist,
     )
     writer.dump(outfile)
@@ -193,6 +238,7 @@ def print_results(checklist):
 
 
 def main():
+    validate_env()
     create_checklist()
     get_results()
 
