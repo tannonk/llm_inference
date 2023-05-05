@@ -23,7 +23,7 @@ import pandas as pd
 data_dir = Path("resources/data/contractbm/")
 data_dir.mkdir(parents=True, exist_ok=True)
 
-dataset = pd.read_csv("split-and-rephrase-data/benchmarks/contract-benchmark.tsv", sep="\t")
+dataset = pd.read_csv(str(data_dir / "split-and-rephrase-data/benchmarks/contract-benchmark.tsv"), sep="\t")
 
 outfile = data_dir / "contract-bm.test.jsonl"
 c = 0

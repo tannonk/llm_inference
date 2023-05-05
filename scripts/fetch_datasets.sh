@@ -62,8 +62,9 @@ fi
 
 contractdata_dir="$DATA_DIR/contractbm"
 if [[  ! -d "$contractdata_dir"  ]]; then
-    wget https://dax-cdn.cdn.appdomain.cloud/dax-split-and-rephrase/1.0.0/split-and-rephrase-data.tar.gz 
-    tar -xvf split-and-rephrase-data.tar.gz
+    mkdir -p $contractdata_dir
+    wget https://dax-cdn.cdn.appdomain.cloud/dax-split-and-rephrase/1.0.0/split-and-rephrase-data.tar.gz -P $contractdata_dir/
+    tar -xvf $contractdata_dir/split-and-rephrase-data.tar.gz -C $contractdata_dir/
 else
     echo ""
     echo "Dataset dir 'contractbm' already exists. Skipping..."
