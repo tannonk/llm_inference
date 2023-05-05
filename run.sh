@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
+# This script essentially just provides a wrapper around the run.py script
+# It is intended to facilitate executing multiple experiments with a single command
+# e.g. you can specify multiple model configs, seeds, and prompt ids
+
 # Example call:
 # nohup bash run_with_args.sh \
 #   --input_file "resources/data/med-easi/med-easi.test.jsonl" \
