@@ -85,8 +85,8 @@ class InferenceArguments:
     )
 
     max_memory: float = field(
-        default=1.0,
-        metadata={"help": "Prompt for generated text"}
+        default=0.95,
+        metadata={"help": "Maximum allowable GPU memory useage for each GPU"}
     )
 
     ###################
@@ -319,8 +319,7 @@ class LLM(object):
                     device_map = infer_auto_device_map(model, no_split_module_classes=["GPTNeoXLayer"], dtype=torch.float16, max_memory=self.set_max_memory())
                     # device_map['embed_out'] = device_map["gpt_neox.embed_in"] # not required for GPTNeoX
                 else:
-                    raise NotImplementedError(f"Model type {self.args.model_name_or_path} not supported")
-                
+                    device_map = infer_auto_device_map(model, dtype=torch.float16, max_memory=self.set_max_memory())   
             else:
                 device_map = "auto"
 
@@ -356,7 +355,7 @@ class LLM(object):
             # see max_memory at https://huggingface.co/docs/accelerate/main/en/usage_guides/big_modeling
             max_memory = {
                 i: (f"{math.floor(t*self.args.max_memory)}GiB" if i > 0 else
-                    f"{math.floor(t*self.args.max_memory*0.6)}GiB") for i in range(n_gpus)
+                    f"{math.floor(t*self.args.max_memory*0.3)}GiB") for i in range(n_gpus)
                 }
             # max_memory['cpu'] = '400GiB' # may need to lower this depending on hardware
             

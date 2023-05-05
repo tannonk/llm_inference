@@ -34,6 +34,11 @@ logging.basicConfig(
 
 eval_header = "bleu;sari;fkgl;pbert_ref;rbert_ref;fbert_ref;pbert_src;rbert_src;fbert_src;ppl_mean;ppl_std;lens;lens_std;intra_dist1;intra_dist2;inter_dist1;inter_dist2;Compression ratio;Sentence splits;Levenshtein similarity;Exact copies;Additions proportion;Deletions proportion;Lexical complexity score;file_id"
 
+test_set_lines = {
+    'med-easi-test': 300,
+    'asset-test': 359,
+}
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_configs", type=str, default="exp_configs/cluster/", dest="EXP_TO_RUN",
@@ -55,61 +60,77 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def line_count(filepath: Path, verbose: bool = False) -> int:
+def check_outputs_file(filepath: Path, verbose: bool = False) -> int:
+    """
+    Compare the number of lines in the output file to the number of lines in the test set
+    """
     if not filepath.exists():
-        print(f'{bcolors.FAIL}File not found {filepath} {bcolors.ENDC}')
+        print(f'{bcolors.FAIL}File not found{bcolors.ENDC} {filepath}')
     else:
-        if verbose:
-            with open(filepath, 'r', encoding='utf8') as f:
-                lc = sum(1 for _ in f)
-            logger.info(f'{lc} lines found in {filepath}')
+        with open(filepath, 'r', encoding='utf8') as f:
+            lc = sum(1 for _ in f)
+    
+    if lc != test_set_lines[filepath.name.split('_')[0]]:
+        print(f'{bcolors.FAIL}Line count mismatch:{bcolors.ENDC} {filepath} ({lc})')
     return 
 
 def check_eval_file(filepath: Path, verbose: bool = False) -> None:
+    """
+    Checks that the header of the evaluation file matches expected
+    """
     if not filepath.exists():
         print(f'{bcolors.FAIL}File not found {filepath} {bcolors.ENDC}')
     else:
         with open(filepath, 'r', encoding='utf8') as f:
             if f.readlines()[0].strip() != eval_header:
-                print(f'{bcolors.FAIL}Header mismatch in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
+                print(f'{bcolors.FAIL}Header mismatch in{bcolors.ENDC} {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
     return
 
 def check_log_file(filepath: Path, do_run: bool = False, verbose: bool = False) -> None:
-    with open(filepath, 'r', encoding='utf8') as f:
-        log = f.read()
-        # check for errors explitly
-        if 'Traceback' in log:
-            print(f'{bcolors.FAIL}Traceback found in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
-            print('*********')
-            # print sample of log with context following error message
-            print('\t', log[log.find('Traceback'):100])
-            print('*********')
-        elif 'slurmstepd: error:' in log:
-            print(f'{bcolors.FAIL}SLURM error found in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
-            print('*********')
-            # print sample of log with context following error message
-            print('\t', log[log.find('slurmstepd: error:'):])
-            print('*********')
-        elif not 'Finished inference' in log:
-            print(f'{bcolors.FAIL}Failed to complete inference in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
-            print('\t', log[-200:])
-        elif not 'Wrote results to' in log:
-            print(f'{bcolors.FAIL}Failed to write results in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
-            print('\t', log[-200:])
-            # if there's no evidence of evaluation results in the log, get the command to run evaluation
-            eval_command = get_eval_command(filepath, verbose=verbose, do_run=do_run)
-            if not do_run:
-                print('*** You could run the following command: ***')
-                print(eval_command)
-                print()
-            if do_run:
-                print('*** Attempting to run the following command: ***')
-                print(eval_command)
-                run_command(eval_command, verbose=verbose)
-                print()
-        else: # seems to have completed successfully
-            if verbose:
-                logger.info(f'{bcolors.OKGREEN}No errors found in {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)}) {bcolors.ENDC}')
+    """
+    Checks for potential errors in the log file
+    """
+    if not filepath.exists():
+        pass
+        # print(f'{bcolors.FAIL}File not found {filepath} {bcolors.ENDC}')
+    else:    
+        with open(filepath, 'r', encoding='utf8') as f:
+            log = f.read()
+            # check for errors explitly
+            if 'torch.cuda.OutOfMemoryError: CUDA out of memory' in log:
+                print(f'{bcolors.FAIL}OOM error found in {bcolors.ENDC} {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
+            elif 'Traceback' in log:
+                print(f'{bcolors.FAIL}Traceback found in {bcolors.ENDC} {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
+                print('*********')
+                # print sample of log with context following error message
+                print('\t', log[log.find('Traceback'):log.find('Traceback')+200])
+                print('*********')
+            elif 'slurmstepd: error:' in log:
+                print(f'{bcolors.FAIL}SLURM error found in {bcolors.ENDC} {filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
+                print('*********')
+                # print sample of log with context following error message
+                print('\t', log[log.find('slurmstepd: error:'):])
+                print('*********')
+            elif not 'Finished inference' in log:
+                print(f'{bcolors.FAIL}Failed to complete inference in {bcolors.ENDC}{filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
+                print('\t', log[-200:])
+            elif not 'Wrote results to' in log:
+                print(f'{bcolors.FAIL}Failed to write results in {bcolors.ENDC}{filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
+                print('\t', log[-200:])
+                # if there's no evidence of evaluation results in the log, get the command to run evaluation
+                eval_command = get_eval_command(filepath, verbose=verbose)
+                if not do_run:
+                    print('*** You could run the following command: ***')
+                    print(eval_command)
+                    print()
+                if do_run:
+                    print('*** Attempting to run the following command: ***')
+                    print(eval_command)
+                    run_command(eval_command, verbose=verbose)
+                    print()
+            else: # seems to have completed successfully
+                if verbose:
+                    logger.info(f'{bcolors.OKGREEN}No errors found in {bcolors.ENDC}{filepath} ({datetime.fromtimestamp(filepath.stat().st_mtime)})')
     return
 
 def collect_config_files(config_dir: Path, verbose: bool = False) -> List[Path]:
@@ -159,8 +180,8 @@ def check_files(log_file: Path, outputs_file: Path, eval_file: Path, args_file: 
     """
     check_log_file(log_file, do_run=do_run, verbose=args.verbose)
     check_eval_file(eval_file, verbose=args.verbose)
-    line_count(outputs_file, verbose=args.verbose)
-    return
+    check_outputs_file(outputs_file, verbose=args.verbose)
+    return 1
     
 
 if __name__ == '__main__':
@@ -168,28 +189,26 @@ if __name__ == '__main__':
     args = parse_args()
     # collect config files in order to check for missing or not yet run configs
     configs = collect_config_files(Path(args.EXP_TO_RUN))
-    # print(configs)
 
     data_dir = Path(args.EXP_READY)
 
     c = 0
     for model_dir in data_dir.iterdir():
         if model_dir.name.lower() in configs:
-            # logger.info(f'{bcolors.OKBLUE}Checking {model_dir} {bcolors.ENDC}')
             # remove the config from the list if the output dir exists
             configs.remove(model_dir.name.lower())
 
             # check for problematic log files and output files
-            for filepath in tqdm(model_dir.glob('*.jsonl')):
+            for filepath in tqdm(model_dir.glob('*.jsonl'), desc=f'{model_dir.name}'):
                 log_file = filepath.with_suffix('.log')
                 outputs_file = filepath.with_suffix('.jsonl')
                 eval_file = filepath.with_suffix('.eval')
                 args_file = filepath.with_suffix('.json')
-                check_files(log_file, outputs_file, eval_file, args_file, 
+                c += check_files(log_file, outputs_file, eval_file, args_file, 
                             do_run=args.do_run, verbose=args.verbose)
         
     # if there are any configs left, they have not been run yet
     if len(configs) > 0:
         print(f'{bcolors.WARNING}No output dirs found for the following models:{bcolors.ENDC} {configs}')
 
-    print(f'{bcolors.OKGREEN}Checked {c} log files {bcolors.ENDC}')
+    print(f'{bcolors.OKGREEN}Checked outputs for {c} inference runs {bcolors.ENDC}')
