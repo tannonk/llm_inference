@@ -147,17 +147,17 @@ python -m inference \
 --prompt_json "prompts/p0.json"
 ```
 
-Be aware that API models cost money! The approximate cost of running the OpenAI models on ASSET test set (using 3 Few-shot examples with `p0.json`) is
+Be aware that API models cost money! The approximate cost of running the OpenAI models on the ASSET test set (using 3 Few-shot examples with the pre-defined prompts) is
 
-|  Model | Approx. inference cost |
-| ------ | -------------------- |
-| openai-gpt-3.5-turbo | $0.172 USD |
-| openai-text-ada-001 | $0.035 USD |
-| openai-text-babbage-001 | $0.044 USD |
-| openai-text-curie-001 | $0.175 USD |
-| openai-text-davinci-002 | $1.75 USD |
-| openai-text-davinci-003 | $1.75 USD |
-
+|          Model             |  `p0`  |  `p1`  |  `p2`  |        Pricing        |
+| -------------------------- | ------ | ------ | ------ | --------------------- |
+| openai-gpt-3.5-turbo       | $0.172 | $0.189 | $0.22  | $0.002 / 1k tokens    |
+| openai-text-ada-001        | $0.035 | $0.038 | $0.046 | $0.0004 / 1k tokens   |
+| openai-text-babbage-001    | $0.044 | $0.047 | $0.057 | $0.0005 / 1k tokens   |
+| openai-text-curie-001      | $0.175 | $0.19  | $0.23  | $0.002 / 1k tokens    |
+| openai-text-davinci-002    | $1.75  | $1.85  | $2.26  | $0.02 / 1k tokens     |
+| openai-text-davinci-003    | $1.75  | $1.85  | $2.26  | $0.02 / 1k tokens     |
+| approx. # TOKENS processed |  ~86K  |  ~93K  |  ~113k |                       |
 
 ## Prompting
 

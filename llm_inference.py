@@ -494,7 +494,8 @@ class API_LLM(object):
                           "Will change batch size to 1 automatically.")
             self.args.batch_size = 1
         # track the estimated cost of the API calls
-        self.estimated_cost = 0
+        self.cost = 0
+        self.total_tokens = 0
 
     def generate_from_model(self, inputs: List[str]) -> List[List[str]]:
         """
@@ -517,12 +518,14 @@ class API_LLM(object):
             with get_openai_callback() as cb:
                 outputs = chain.run(inputs[0])
                 logger.info(f'{cb}'.replace("\n", ", "))
-                self.estimated_cost += cb.total_cost
+                self.cost += cb.total_cost
+                self.total_tokens += cb.total_tokens
         elif self.args.model_name_or_path.startswith('openai-'):
             with get_openai_callback() as cb:
                 outputs = self.model(inputs[0])
                 logger.info(f'{cb}'.replace("\n", ", "))
-                self.estimated_cost += cb.total_cost
+                self.cost += cb.total_cost
+                self.total_tokens += cb.total_tokens
         else:
             outputs = self.model(inputs[0])
 
