@@ -17,6 +17,12 @@ Example usage:
 
     To inspect samples from different models:
     python -m scripts.inspect_outputs --seed 287 --models bloom,llama-7b,opt-13b --num_examples 2
+    python -m scripts.inspect_outputs --seed 489 --models_file models.csv --num_examples 5
+
+    Example: models.csv
+    openai-text-davinci-003,p1
+    t5-small-lm-adapt,p0
+    llama-7b,p1
 
 """
 
@@ -36,13 +42,13 @@ def get_args():
     parser.add_argument('--models', default=None, help='List of models to inspect random samples')
     parser.add_argument('--test_set', default="asset", help='Test set name')
     parser.add_argument('--num_examples', type=int, default=1, help='Number of examples for each models list')
+    parser.add_argument('--models_file', default=None, help='List of models and prompts to inspect random samples')
     return parser.parse_args()
 
 
 def peek_outputs(args):
     if not args.seed:
         args.seed = random.randint(0, 100000)
-    print(f'Using seed: {args.seed}')
     random.seed(int(args.seed))
 
     lines = [line for line in iter_lines(args.infile)]
@@ -57,28 +63,48 @@ def peek_outputs(args):
 
 def inspect_models(args):
     seed = int(args.seed)
+    print(f'Using seed: {args.seed}')
+    print(f'\n=== Settings === \n- seed: {args.seed}'
+          f'\n- test_set: {args.test_set}\n================\n')
+    models = get_models(args)
     for _ in range(0, args.num_examples):
         random.seed(seed)
-        get_models_data(args)
+        get_models_data(args, models)
         seed = seed + 1
 
 
-def get_models_data(args):
-    models = args.models.split(",")
+def get_models_data(args, models):
     index = -1
     complex_line = ""
     outputs = []
 
-    for m in models:
-        file = glob.glob(f"resources/outputs/{m}/*{args.test_set}*{args.prompt_id}*{args.seed}*jsonl")
+    for model, prompt_id in models:
+        file = glob.glob(f"resources/outputs/{model}/*{args.test_set}*{prompt_id}*{args.seed}*jsonl")
+        if len(file) == 0:
+            raise Exception(f"There are no model outputs for seed {args.seed}")
         lines = [line for line in iter_lines(file[0])]
         if index == -1:
             index = random.randint(0, len(lines))
         item = lines[index]
         complex_line = item["source"]
-        outputs.append([f"{m}:", item["model_output"]])
+        outputs.append([f"{model}-{prompt_id}:", item["model_output"]])
 
     show_results(complex_line, outputs)
+
+
+def get_models(args):
+    models = []
+    if args.models_file:
+        with open(args.models_file) as f1:
+            for line in f1:
+                line = line.strip()
+                model, prompt = line.split(",")
+                models.append([model, prompt])
+    elif args.models:
+        models = args.models.split(",")
+        models = [[m, args.prompt_id] for m in models]
+
+    return models
 
 
 def show_results(complex_line, outputs):
@@ -92,7 +118,7 @@ if __name__ == '__main__':
 
     if args.infile:
         peek_outputs(args)
-    elif args.models:
+    elif args.models or args.models_file:
         inspect_models(args)
     else:
         print("No valid arguments were defined, the script needs either a file (--infile) "
