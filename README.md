@@ -238,6 +238,25 @@ This script will produce the following files to help track experiments:
 We have run a list of experiments to test simplification models on current models and datasets. The experiments' results can be seen in a [summarised format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/summary) and [full format](https://github.com/tannonk/llm_simplification_results/tree/main/reports/full).
 Please contact Tannon Kew (Slack) to get access to this repo.
 
+## Reference-free Evaluation Metrics
+
+We compute all automatic metrics on the ground truth simplificiations to provide a reference point for reference-free metrics such as FKGL and QE statistics.
+
+To prepare the ground truth texts as model outputs and evaluate, run:
+
+```bash
+python scripts/prepare_ground_truth_as_outputs.py \
+	resources/data/asset/dataset/asset.test.jsonl \
+	resources/outputs/ground_truths/asset.test.jsonl
+
+python -m evaluation.simplification_evaluation \
+	resources/outputs/ground_truths/asset.test.jsonl \
+	--out_file resources/outputs/ground_truths/asset.test.eval \
+	--use_cuda
+```
+
+Note, for ASSET, which has multiple references, we randomly select 1 as the stand-in model output text and use all the others as references.
+
 ## Limitations & Known Issues
 
 - LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
