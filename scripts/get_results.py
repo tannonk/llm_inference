@@ -111,8 +111,8 @@ def get_initial_params(file):
         ex_selector = "random"
     elif len(hps) == 7:
         test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
-    elif model == "ground_truth":
-        test, example, prompt, ex_selector, few_n, refs, seed = None, None, None, None, None, None, None
+    elif model == "ground_truth" and len(hps) == 1:
+        test, example, prompt, ex_selector, few_n, refs, seed = hps[0], None, None, None, None, None, None
     else:
         raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
 
