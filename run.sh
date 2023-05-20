@@ -6,7 +6,7 @@
 # e.g. you can specify multiple model configs, seeds, and prompt ids
 
 # Example call:
-# nohup bash run_with_args.sh \
+# nohup bash run.sh \
 #   --input_file "resources/data/med-easi/med-easi.test.jsonl" \
 #   --examples "resources/data/med-easi/med-easi.validation.jsonl" \
 #   --model_configs "exp_configs/cluster/bloom-560m exp_configs/cluster/bloom-1b1.json exp_configs/cluster/bloom-3b.json" \

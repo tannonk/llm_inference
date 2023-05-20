@@ -49,7 +49,6 @@ else
     echo ""
 fi
 
-
 plainenglishlegal_dir="$DATA_DIR/plainenglishlegal"
 if [[  ! -d "$plainenglishlegal_dir"  ]]; then
     git clone https://github.com/lauramanor/legal_summarization $plainenglishlegal_dir
@@ -58,7 +57,6 @@ else
     echo "Dataset dir 'plainenglishlegal' already exists. Skipping..."
     echo ""
 fi
-
 
 contractdata_dir="$DATA_DIR/contractbm"
 if [[  ! -d "$contractdata_dir"  ]]; then
@@ -70,3 +68,5 @@ else
     echo "Dataset dir 'contractbm' already exists. Skipping..."
     echo ""
 fi
+
+# newsela
