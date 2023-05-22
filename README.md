@@ -1,6 +1,6 @@
 ## LLM Inference
 
-Experimental repository for inference with LLMs supported by HuggingFace.
+Experimental repository for text simplification with LLMs.
 
 ## Setup
 
@@ -74,7 +74,7 @@ At the moment, we support the following models:
 
 ## Data
 
-To get the relevant datasets for reproducing experiments, use the script `scripts/fetch_datasets.sh`. 
+To get the relevant datasets for reproducing experiments, use the script [`scripts/fetch_datasets.sh`](./scripts/fetch_datasets.sh). 
 This script downloads the raw data for publicly available datasets and writes the files to the `resources/data/` directory.
 
 ```bash
@@ -92,14 +92,14 @@ See the [readme](./scripts/README.md) for more details on the format.
 
 ## How to run
 
-To facilitate running inference with different datasets, models, random seeds and prompts, use [./run.sh].
+To facilitate running inference with different datasets, models, random seeds and prompts, use [./run.sh](./run.sh).
 
 It accepts the following arguments:
 - `--input_file` (test set)
 - `--examples` (validation set from which we sample few-shot examples) 
-- `--model_configs` a space-delimited list of exp_configs (i.e. models to run, see [./exp_configs/])
+- `--model_configs` a space-delimited list of exp_configs (i.e. models to run, see [./exp_configs/](./exp_configs/)).
 - `--seeds` a space-delimited list of seeds to use (for consistency, use 489 287 723)
-- `--prompt_ids` a space-delimited list of predefined prompts (see [./prompts/])
+- `--prompt_ids` a space-delimited list of predefined prompts (see [./prompts/](./prompts/))
 
 For example to run inference on Med-EASI with 3 models, 2 seeds and 1 prompt would like this:
 
@@ -143,7 +143,7 @@ Below we provide more information on the lower-level scripts.
 
 #### run.py
 
-[./run.py] executes a single **inference** run followed by **evaluation** of model outputs. 
+[`./run.py`](./run.py) executes a single **inference** run followed by **evaluation** of model outputs.
 
 For example, to run inference on `ASSET` with `bloom-560m` with prompt `p0`, you can run:
 
@@ -165,7 +165,7 @@ python -m run \
     --dry_run False # set to True to inspect the command calls without actually executing anything
 ```
 
-Alternatively, you can also pass a json file from [./exp_configs/] in position 1 with some or all of the arguments predefined. 
+Alternatively, you can also pass a json file from [./exp_configs/](./exp_configs/) in position 1 with some or all of the arguments predefined.
 
 For example, on a server with RTX 3090 (24GB) GPUs, you could use the following:
 
@@ -188,7 +188,7 @@ This scripts produces the following files:
 
 #### inference.py
 
-[./inference.py] is the script that performs inference with a LLM.
+[./inference.py](./inference.py) is the script that performs inference with a LLM.
 
 For example, to use `bigscience/bloom-1b1` for local inference, you could execute the following:
 
@@ -211,8 +211,8 @@ python -m inference \
 ```
 
 where:
-- `--input_file` is a either a .txt file, with one input sentence per line or a JSONL file produced by `scripts.prepare_*.py`. For consistency we recommend the latter.
-- `--examples` is a JSONL file produced by `scripts.prepare_*.py`, containing validation set examples that may be selected as few-shot examples.
+- `--input_file` is a either a .txt file, with one input sentence per line OR a JSONL file produced by `scripts/prepare_*.py`. For consistency we recommend the latter.
+- `--examples` is a JSONL file produced by `scripts/prepare_*.py`, containing validation set examples that may be selected as few-shot examples.
 - NB I: by default, an additional JSON file will be generated which persists the inference parameters used for generation.
 - NB II: specify `--output_dir ''` to print your outputs to stdout (good for debugging/development purposes)
 
@@ -231,7 +231,7 @@ python -m inference \
     --prompt_json "prompts/p0.json"
 ```
 
-**Note:** for this to work you will have to add your keys to [./api_secrets.py] so that `COHERE_API_KEY` and `OPENAI_API_KEY` are exposed to the library.
+**Note:** for this to work you will have to add your keys to [`./api_secrets.py`](./api_secrets.py) so that `COHERE_API_KEY` and `OPENAI_API_KEY` are exposed to the library.
 
 Be aware that API models cost money! 
 
@@ -252,7 +252,7 @@ Therefore the maximal cost of running all experiments with OpenAI most expensive
 
 #### evaluation.simplification_evaluation.py
 
-[./evaluation/simplification_evaluation.py] computes automatic metrics using EASSE and other libraries.
+[`./evaluation/simplification_evaluation.py`](./evaluation/simplification_evaluation.py) computes automatic metrics using EASSE and other libraries.
 
 We recommend running evaluation with a GPU in order to compute model-based metrics (e.g. LENS, BERTScore, PPL).
 
