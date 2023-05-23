@@ -126,6 +126,7 @@ def load_data(args):
     # model outputs can be in jsonl or txt format
     if args.hyp_file.endswith('.txt') or args.hyp_file.endswith('.tsv'):
         hyp_sents = list(iter_lines(args.hyp_file))
+        hyp_sents = [i.split('\t')[0] for i in hyp_sents] # if tab-separated, take only the first column (assumes that mulitple hyps were returned)
     elif args.hyp_file.endswith('.jsonl'):
         lines = list(iter_lines(args.hyp_file))
         hyp_sents = [i['model_output'] for i in lines]

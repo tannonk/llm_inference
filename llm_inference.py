@@ -180,6 +180,12 @@ class InferenceArguments:
                           "Similar to presence_penalty, but works on more immediate blocking."}
     )
 
+    trial_key: bool = field(
+        default=False,
+        metadata={"help": "Set to True if using Cohere models with a trial key "
+                          "to avoid hitting the rate limit of 5 requests per minute."}
+    )
+
     ###################
     ## data and prompts
     ###################

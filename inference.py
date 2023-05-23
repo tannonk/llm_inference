@@ -70,6 +70,13 @@ def run_inference(args):
                 prompt_format=args.prompt_format,
             )
             
+            if args.model_name_or_path.lower().startswith("cohere-") and args.trial_key:
+                if c > 0 and c % 5 == 0:
+                    # sleep for at least 1 minute every 5 requests to avoid hitting the rate limit
+                    logger.info(f"Sleeping for 65 seconds to avoid hitting the rate limit...")
+                    time.sleep(65)
+                    logger.info(f"Resuming inference...")
+
             outputs = llm.generate_from_model(inputs)
             
             outputs = postprocess_model_outputs(inputs, outputs, args.example_separator)

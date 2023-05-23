@@ -91,7 +91,6 @@ def get_results():
             parsed_results.append(score)
 
         output.append(parsed_results)
-
     columns = get_columns(file_headers)
     final_df = pd.DataFrame.from_records(output, columns=columns)
     save_results_full(final_df)
@@ -112,12 +111,15 @@ def get_initial_params(file):
         ex_selector = "random"
     elif len(hps) == 7:
         test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
+    elif model == "ground_truth" and len(hps) == 1:
+        test, example, prompt, ex_selector, few_n, refs, seed = hps[0], None, None, None, None, None, None
+        test = test.replace(".eval", "").replace('.', '-') # strip away extension and replace dots with dashes
     else:
         raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
 
-    few_n = few_n.replace("fs", "")
-    refs = refs.replace("nr", "")
-    seed = re.search(r'\d+', seed).group()
+    few_n = few_n.replace("fs", "") if few_n else None
+    refs = refs.replace("nr", "") if refs else None
+    seed = re.search(r'\d+', seed).group() if seed else None
 
     return [model, test, example, few_n, prompt, refs, seed, ex_selector]
 
@@ -190,6 +192,8 @@ def create_checklist():
     parsed_results = []
     for file in files:
         params = get_initial_params(file)
+        if any(param is None for param in params): # Skip ground truth
+            continue
         parsed_results.append(params)
 
     uniq_params = get_unique_params(parsed_results)  # Combine templates, experiments and create an unique list

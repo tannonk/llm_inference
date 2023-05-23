@@ -296,6 +296,7 @@ if __name__ == "__main__":
                     f'--top_p {i_args.top_p} ' \
                     f'--top_k {i_args.top_k} ' \
                     f'--temperature {i_args.temperature} ' \
+                    f'--trial_key "{i_args.trial_key}" ' \
                     f'--examples "{i_args.examples}" ' \
                     f'--input_file "{i_args.input_file}" ' \
                     f'--n_refs {i_args.n_refs} ' \
