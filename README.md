@@ -265,11 +265,11 @@ To prepare the ground truth texts as model outputs and evaluate, run:
 ```bash
 python scripts/prepare_ground_truth_as_outputs.py \
     resources/data/asset/dataset/asset.test.jsonl \
-    resources/outputs/ground_truths/asset.test.jsonl
+    resources/outputs/ground_truth/asset.test.jsonl
 
 python -m evaluation.simplification_evaluation \
-    resources/outputs/ground_truths/asset.test.jsonl \
-    --out_file resources/outputs/ground_truths/asset.test.eval \
+    resources/outputs/ground_truth/asset.test.jsonl \
+    --out_file resources/outputs/ground_truth/asset.test.eval \
     --use_cuda
 ```
 
