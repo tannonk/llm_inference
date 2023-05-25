@@ -194,11 +194,11 @@ def create_checklist():
         params = get_initial_params(file)
         if any(param is None for param in params): # Skip ground truth
             continue
+        params = [p for p in params if 'val' not in p] # remove validation set
         parsed_results.append(params)
 
     uniq_params = get_unique_params(parsed_results)  # Combine templates, experiments and create an unique list
     checklist = [list(i) for i in itertools.product(*uniq_params)]
-
     for i, item in enumerate(checklist):
         if item in parsed_results:
             checklist[i] = np.append(item, ":white_check_mark:")
@@ -215,15 +215,12 @@ def get_unique_params(parsed_results):
     templates = get_filtered_files(templates)
     templates = [Path(file).stem for file in templates]
 
-    prompts = ["p0", "p1", "p2"]
     unique_params = []
-
     for i in range(0, len(parsed_results[0])):
         a = [result[i] for result in parsed_results]
         unique_params.append(a)
-
+    
     unique_params[0] = np.append(unique_params[0], templates)  # Models list
-    unique_params[4] = np.append(unique_params[4], prompts)  # Prompts list
 
     unique_params = [np.unique(a) for a in unique_params]
 
@@ -234,11 +231,11 @@ def print_results(checklist):
     paths = [f"{args.PRIVATE_REPORTS_OUT}"] # add the private reports folder to the list
     if args.PUBLIC_REPORTS_OUT:
         paths.append(f"{args.PUBLIC_REPORTS_OUT}")
-        
+
     checklist = [r.tolist() for r in checklist]
 
     writer = MarkdownTableWriter(
-        headers=["Model", "Test", "Train (few-shot)", "# samples", "Prompt", "# Ref", "Seed", "Strategy", "Done?"],
+        headers=["Model", "Test", "# samples", "Prompt", "# Ref", "Seed", "Strategy", "Done?"],
         value_matrix=checklist,
     )
     for path in paths:
