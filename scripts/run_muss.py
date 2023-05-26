@@ -20,7 +20,8 @@ import logging
 
 from muss.preprocessors import get_preprocessors, ComposedPreprocessor
 from muss.utils.helpers import write_lines, read_lines, get_temp_filepath
-from muss.simplifiers import get_fairseq_simplifier
+from muss.fairseq.base import fairseq_generate
+
 from muss.resources.paths import MODELS_DIR
 from muss.utils.resources import download_and_extract
 
@@ -47,7 +48,7 @@ def get_model_path(model_name):
     return model_path
 
 
-def get_preprocessor(model_name, TOKENS_RATIO):
+def get_preprocessor(TOKENS_RATIO):
     preprocessors_kwargs = {
         'LengthRatioPreprocessor': {'target_ratio': TOKENS_RATIO["LengthRatioPreprocessor"], 'use_short_name': False},
         'ReplaceOnlyLevenshteinPreprocessor': {
@@ -77,9 +78,7 @@ if __name__ == '__main__':
 
     # 'muss_en_mined'
     exp_dir = get_model_path(args.model_name)
-    generate_kwargs = {}
-    simplifier = get_fairseq_simplifier(exp_dir, **generate_kwargs)
-    composed_preprocessor = get_preprocessor(args.model_name, TOKENS_RATIO_DEFAULT)
+    composed_preprocessor = get_preprocessor(TOKENS_RATIO_DEFAULT)
     
     source_sentences, reference_sentences = list(zip(*[(sent["complex"], sent["simple"]) for sent in iter_lines(args.input_file)]))
     complex_filepath = get_temp_filepath()
@@ -91,7 +90,8 @@ if __name__ == '__main__':
 
     pred_filepath = get_temp_filepath()
     preprocessed_pred_filepath = get_temp_filepath()
-    simplifier(preprocessed_complex_filepath, pred_filepath) 
+    kwargs = {}
+    fairseq_generate(preprocessed_complex_filepath, pred_filepath, exp_dir, **kwargs)
     composed_preprocessor.decode_file(pred_filepath, preprocessed_pred_filepath, encoder_filepath=complex_filepath)
 
     c = 0
