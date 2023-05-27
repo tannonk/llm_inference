@@ -5,12 +5,8 @@
 # __Email__ = 'sweagraw@umd.edu'
 # __Date__ = '2023-05-26'
 
-git clone git@github.com:facebookresearch/muss.git
-cd muss/
-pip install -e .  # Install package
-python -m spacy download en_core_web_md 
 
-OUTPUT_DIR="llm_simplification_results"
+OUTPUT_DIR="resources/outputs"
 DATA_DIR="resources/data"
 
 mkdir -p ${OUTPUT_DIR}/muss
