@@ -31,8 +31,8 @@ Here's an example from ASSET:
 Install [MUSS](https://github.com/facebookresearch/muss) using
 
 ```
-# git clone git@github.com:facebookresearch/muss.git
-# cd muss/
-# pip install -e .  # Install package
-# python -m spacy download en_core_web_md 
+git clone git@github.com:facebookresearch/muss.git
+cd muss/
+pip install -e .  # Install package
+python -m spacy download en_core_web_md 
 ```
