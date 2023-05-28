@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
-outputs_dir='resources/outputs'
+# outputs_dir='resources/outputs'
+outputs_dir=$1
 
-for file in $(ls -l $outputs_dir/*/*.jsonl | awk '{print $9}'); do
+echo "Evaluating all files in $outputs_dir ..."
+
+for file in $(ls -l $outputs_dir/*.jsonl | awk '{print $9}'); do
     # echo $file
     eval_file=${file%.*}.eval
     # echo $eval_file

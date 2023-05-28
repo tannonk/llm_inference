@@ -106,14 +106,21 @@ def get_filtered_files(files):
 def get_initial_params(file):
     model = Path(file).parent.name
     hps = Path(file).name.split("_")
-    if len(hps) == 6:
+    if model in ["ground_truth", "muss"]: # special cases
+        # resources/outputs/ground_truth/asset.test.eval
+        # resources/outputs/muss_en_mined/asset-test_default.eval
+        test, example, prompt, ex_selector, few_n, refs, seed = hps[0], None, None, None, None, None, None
+        test = test.replace(".eval", "").replace('.', '-') # strip away extension and replace dots with dashes
+        if 'muss_en_wikilarge_mined' in file:
+            model = 'muss_en_wikilarge_mined'
+        elif 'muss_en_mined' in file:
+            model = 'muss_en_mined'
+        print(test, example, prompt, ex_selector, few_n, refs, seed)
+    elif len(hps) == 6:
         test, example, prompt, few_n, refs, seed = hps
         ex_selector = "random"
     elif len(hps) == 7:
         test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
-    elif model == "ground_truth":
-        test, example, prompt, ex_selector, few_n, refs, seed = hps[0], None, None, None, None, None, None
-        test = test.replace(".eval", "").replace('.', '-') # strip away extension and replace dots with dashes
     else:
         raise ValueError(f"Illegal number of parameters found in the file name: ({len(hps)}) {hps}")
 
