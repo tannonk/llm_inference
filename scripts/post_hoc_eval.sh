@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
-# outputs_dir='resources/outputs'
+# Example call:
+# bash scripts/post_hoc_eval.sh resources/outputs/muss
+
 outputs_dir=$1
 
 echo "Evaluating all files in $outputs_dir ..."
