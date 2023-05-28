@@ -25,3 +25,14 @@ Here's an example from ASSET:
     ]
 }
 ```
+
+# Baseline Outputs
+
+Install [MUSS](https://github.com/facebookresearch/muss) using
+
+```
+git clone git@github.com:facebookresearch/muss.git
+cd muss/
+pip install -e .  # Install package
+python -m spacy download en_core_web_md 
+```
