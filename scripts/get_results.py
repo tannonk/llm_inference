@@ -115,7 +115,6 @@ def get_initial_params(file):
             model = 'muss_en_wikilarge_mined'
         elif 'muss_en_mined' in file:
             model = 'muss_en_mined'
-        print(test, example, prompt, ex_selector, few_n, refs, seed)
     elif len(hps) == 6:
         test, example, prompt, few_n, refs, seed = hps
         ex_selector = "random"
