@@ -111,7 +111,7 @@ def get_initial_params(file):
         ex_selector = "random"
     elif len(hps) == 7:
         test, example, prompt, ex_selector, few_n, refs, seed = Path(file).name.split("_")
-    elif model == "ground_truth" and len(hps) == 1:
+    elif model == "ground_truth":
         test, example, prompt, ex_selector, few_n, refs, seed = hps[0], None, None, None, None, None, None
         test = test.replace(".eval", "").replace('.', '-') # strip away extension and replace dots with dashes
     else:
