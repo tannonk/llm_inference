@@ -75,7 +75,16 @@ def compute_metrics(
     
     # basic simplification metrics
     results['bleu'] = bleu.corpus_bleu(hyp_sents, refs_sents)
-    results['sari'] = sari.corpus_sari(src_sents, hyp_sents, refs_sents, legacy=False)
+    
+    # results['sari'] = sari.corpus_sari(src_sents, hyp_sents, refs_sents, legacy=False)
+    
+    # individual SARI scores
+    sari_add, sari_keep, sari_del = sari.get_corpus_sari_operation_scores(src_sents, hyp_sents, refs_sents)
+    results['sari_add'] = sari_add
+    results['sari_keep'] = sari_keep
+    results['sari_del'] = sari_del
+    results['sari'] = (sari_add + sari_keep + sari_del) / 3
+
     results['fkgl'] = fkgl.corpus_fkgl(hyp_sents)
     
     results['pbert_ref'], results['rbert_ref'], results['fbert_ref'] = None, None, None
