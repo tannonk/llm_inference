@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     c = 0
     with open(args.output_file, "w", encoding="utf8") if args.output_file != "stdout" else sys.stdout as outf:
-        for line in serialize_to_jsonl(source_sentences, [[x] for x in read_lines(preprocessed_pred_filepath)], read_lines(prompt_file), reference_sentences):
+        for line in serialize_to_jsonl(read_lines(prompt_file), [[x] for x in read_lines(preprocessed_pred_filepath)], source_sentences, reference_sentences):
             outf.write(f"{line}\n")
             c += 1 
 
