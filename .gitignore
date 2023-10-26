@@ -33,3 +33,7 @@ scratch/
 # api keys
 private/
 resources
+
+# newsela generations
+news-manual*.jsonl
+news-manual*.editops

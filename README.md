@@ -1,27 +1,29 @@
-## LLM Inference
+# <p align=center>`BLESS`</p>
 
-Experimental repository for text simplification with LLMs.
+This repository contains the code, model outputs and evaluation results for the EMNLP 2023 paper "BLESS: Benchmarking Large Language Models on Sentence Simplification".
 
-## Setup
+## Environment Setup
 
-To set up the environment, run the following commands:
+The following commands can be used to recreate the enviornment used to run our experiments.
 
 ```bash
 # create a directory for source code
 mkdir installs
 
-# create a directory for data, models, outputs, etc.
-mkdir -p resources/data resources/outputs resources/models
+# create directories for large items (e.g. data, models, outputs, etc.)
+mkdir resources
 # or alternatively, create a symlink
-ln -s <path_to_storage> resources
+ln -s /path/to/storage/ resources
+# then create the relevant subfolders
+mkdir -p resources/data resources/outputs resources/models
 
-# if working on slurm cluster, load relevant modules
-ml multigpu anaconda3
+# if working on slurm cluster, load relevant modules, e.g. run:
+# ml multigpu anaconda3
 
 # create a clean conda environment
 # NOTE: we recommend using CUDA 11.6, but others may work too
-conda create -n llm_hf1 -c conda-forge python=3.9 cudatoolkit=11.6 cudatoolkit-dev=11.6 -y
-conda activate llm_hf1
+conda create -n bless -c conda-forge python=3.9 cudatoolkit=11.6 cudatoolkit-dev=11.6 -y
+conda activate bless
 
 # install transformers from source
 git clone https://github.com/huggingface/transformers.git installs/transformers
@@ -29,11 +31,12 @@ cd installs/transformers
 pip install -e .
 cd ../..
 
-# NOTE: for efficient inference, we use 8bit quantization with bitsandbytes. 
-# This requires Turing or Ampere GPUs (RTX 20s, RTX 30s, A40-A100, T4+)
-# install bitsandbytes from source
+# for efficient inference, we use 8bit quantization with bitsandbytes. 
+# NOTE: This requires Turing or Ampere GPUs (RTX 20s, RTX 30s, A40-A100, T4+)
+# NOTE: The version used was 0.37.0, which we had to install from source. More recent versions can simply be installed with pip install bitsandbytes, but these have not been tested for compatibility.
 git clone https://github.com/TimDettmers/bitsandbytes.git installs/bitsandbytes
 cd installs/bitsandbytes
+git reset --hard 0f5c394 # v0.37.0
 CUDA_VERSION=116 make cuda11x
 python setup.py install
 cd ../..
@@ -47,14 +50,15 @@ python -m bitsandbytes
 # For evaluation purposes, we also require the following packages
 git clone https://github.com/feralvam/easse.git installs/easse
 cd installs/easse
+git reset --hard a1108d2 # v0.2.4
 pip install -e .
 cd ../..
 
 git clone https://github.com/Yao-Dou/LENS.git installs/LENS
 cd LENS/lens
+git reset --hard 7a601f3 # v0.1.0
 pip install -e .
 cd ../../..
-
 ```
 
 **Note:** `bitsandbytes` is only required for running inference with 8bit quantization. If you have any problems installing this library and don't intend on running inference locally, you can skip this dependency.
@@ -310,16 +314,46 @@ The directory [prompts](./prompts) contains a set of pre-defined prompts in JSON
 
 ## Results
 
-The generated outputs and automtic evaluation results can be found [here](https://github.com/tannonk/llm_simplification_results).
-**Note:** this is a private repo for now. Please contact Tannon Kew (kew@cl.uzh.ch) to get access.
+Generated outputs and evaluation results can can be found in [model_outputs_and_evals](./model_outputs_and_evals/). Please see the corresponding [README](./model_outputs_and_evals/README.md) for more details.
 
-**Note:** for ASSET, which has multiple references, we randomly select 1 as the stand-in model output text and use all the others as references.
+We have aggregated the main results in a [summarised format](./reports/summary) and [full format](./reports/full). Unaggregated results can be found in the [raw format](./reports/raw).
+
+We include a [checklist](./reports/checklist/checklist.md) with the list of experiments.
+
+To visualise the results, take a look at the [plots](./analysis/visualizations).
+
+## Inspecting Outputs
+
+To quickly inspect model generated outputs at random, you can use [this script](https://github.com/tannonk/llm_inference/blob/main/scripts/inspect_outputs.py).
+
+For example, run:
+
+```bash
+python -m scripts.inspect_outputs model_outputs_and_evals/flan-t5-large/asset-test_asset-valid_p0_random_fs3_nr1_s489.jsonl
+```
+
+## Updating Results
+
+Whenever new outputs are available, results can be updated using the [get_results.py](https://github.com/tannonk/llm_inference/blob/main/scripts/get_results.py) script:
+
+```bash
+python -m scripts.get_results
+```
 
 ## Limitations & Known Issues
 
-- LLMs don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
+- LLMs (especially non-instruction-tuned models) don't know when to stop. Thus, they typically generate sequences up to the specified `max_new_tokens`. The function `postprocess_model_outputs()` is used to extract the single relevant model output from a long generation sequence and is currently pretty rough.
 - Setting `--n_refs` > 1 allows for a few-shot prompt example to have multiple possible targets (e.g. sampled from multiple validation set reference sentences). The current method of handling these is to enumerate them starting at 0, but this doesn't seem very elegant or intuitive.
 
-## TODOs
+## Citation
 
-You can find a list of pending experiments in this [checklist](https://github.com/tannonk/llm_inference/blob/main/reports/checklist/checklist.md). Feel free to suggest any new setting, model or dataset.
+```
+@misc{kew2023bless,
+      title={BLESS: Benchmarking Large Language Models on Sentence Simplification}, 
+      author={Tannon Kew and Alison Chi and Laura Vásquez-Rodríguez and Sweta Agrawal and Dennis Aumiller and Fernando Alva-Manchego and Matthew Shardlow},
+      year={2023},
+      eprint={2310.15773},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
